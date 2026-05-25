@@ -1,3 +1,4 @@
+use std::os::windows::process::CommandExt;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -395,6 +396,7 @@ pub fn start_core(app: &tauri::AppHandle, raw: &str, proxy_addr: &str) -> Result
 
     for (args, version) in &cmd_sets {
         let mut child = std::process::Command::new(&bin)
+            .creation_flags(0x08000000)
             .args(*args)
             .arg(cfg_str)
             .stdout(std::process::Stdio::piped())
