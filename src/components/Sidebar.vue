@@ -48,6 +48,19 @@ const plugins = [
         </svg>
       </div>
     </div>
+
+    <div class="sidebar-bottom">
+      <div
+        class="plugin-item"
+        :class="{ active: activePlugin === 'settings' }"
+        title="Settings"
+        @click="$emit('select', 'settings')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -96,5 +109,12 @@ const plugins = [
 .plugin-item.active {
   background: rgb(140, 94, 212);
   color: rgba(255, 255, 255, 0.9);
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
 }
 </style>

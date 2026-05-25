@@ -4,7 +4,7 @@ use tauri::Manager;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 use runner::launcher::{AppState, setup_launcher};
-use runner::settings::{SettingsState, load_settings};
+use runner::settings::{SettingsState, load_settings, register_show_window_shortcut};
 
 #[tauri::command]
 fn exit_app(app_handle: tauri::AppHandle) {
@@ -31,6 +31,7 @@ pub fn run() {
         .setup(|app| {
             let settings = load_settings(app.handle());
             let shortcut = settings.shortcut.clone();
+            let show_shortcut = settings.show_window_shortcut.clone();
             app.manage(SettingsState {
                 settings: std::sync::Mutex::new(settings),
             });
@@ -49,6 +50,8 @@ pub fn run() {
             });
 
             setup_launcher(app, &shortcut)?;
+
+            register_show_window_shortcut(app.handle(), &show_shortcut);
 
             // ── tray ──────────────────────────────────
             let show = MenuItemBuilder::with_id("show", "主界面").build(app)?;
@@ -103,6 +106,9 @@ pub fn run() {
             runner::settings::get_max_visible,
             runner::settings::get_music_api_url,
             runner::settings::set_music_api_url,
+            runner::settings::set_autostart,
+            runner::settings::get_autostart,
+            runner::settings::set_show_window_shortcut,
             exit_app,
             hide_main,
             vpn::add_subscription,

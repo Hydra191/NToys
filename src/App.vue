@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar.vue";
 import RunnerSettings from "./components/view/RunnerSettings.vue";
 import MusicView from "./components/view/MusicView.vue";
 import VpnView from "./components/view/VpnView.vue";
+import GlobalSettings from "./components/view/GlobalSettings.vue";
 import { musicState } from "./stores/music.js";
 
 const activePlugin = ref("home");
@@ -58,6 +59,7 @@ async function close() {
         <RunnerSettings v-if="activePlugin === 'runner'" />
         <MusicView v-show="activePlugin === 'music'" />
         <VpnView v-if="activePlugin === 'vpn'" />
+        <GlobalSettings v-if="activePlugin === 'settings'" />
       </div>
 
     </div>

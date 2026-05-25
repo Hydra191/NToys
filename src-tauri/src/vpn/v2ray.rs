@@ -386,13 +386,15 @@ pub fn start_core(app: &tauri::AppHandle, raw: &str, proxy_addr: &str) -> Result
 
     let cfg_str = cfg_path.to_str().unwrap_or("");
 
-    // Try v5/xray syntax first, then v4
-    let cmd_sets: [(&[&str], &str); 2] = [
-        (&["run", "-c"], "v5/xray"),
-        (&["-c"], "v4"),
+    // Try multiple CLI syntaxes: v5/xray variants, then v4
+    let cmd_sets: [(&[&str], &str); 4] = [
+        (&["run", "-c"], "v5 run -c"),
+        (&["run", "-config"], "v5 run -config"),
+        (&["-c"], "v4 -c"),
+        (&["run"], "v5 run positional"),
     ];
 
-    let mut last_err = String::new();
+    let mut errors: Vec<String> = vec![];
 
     for (args, version) in &cmd_sets {
         let mut child = std::process::Command::new(&bin)
@@ -420,20 +422,20 @@ pub fn start_core(app: &tauri::AppHandle, raw: &str, proxy_addr: &str) -> Result
                     let mut buf = String::new();
                     std::io::BufReader::new(&mut pipe).read_to_string(&mut buf).ok().map(|_| buf)
                 }).unwrap_or_default();
-                last_err = format!(
-                    "v2ray ({} syntax) exited immediately (code: {:?})\nstderr: {}",
-                    version, status.code(), stderr
-                );
+                errors.push(format!(
+                    "[{}] exit code {:?}: {}",
+                    version, status.code(), stderr.trim()
+                ));
             }
             Err(e) => {
-                last_err = format!("v2ray ({} syntax) process check error: {}", version, e);
+                errors.push(format!("[{}] process error: {}", version, e));
             }
         }
     }
 
     Err(format!(
-        "v2ray failed to start (tried v5 and v4 CLI):\n{}\n\nConfig: {}",
-        last_err, cfg_str
+        "v2ray failed to start:\n{}\n\nConfig: {}",
+        errors.join("\n"), cfg_str
     ))
 }
 
