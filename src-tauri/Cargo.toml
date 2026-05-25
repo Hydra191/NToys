@@ -1,0 +1,29 @@
+[package]
+name = "ntoys"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "ntoys_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-global-shortcut = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+walkdir = "2"
+parselnk = "0.1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+base64 = "0.22"
+pinyin = "0.10"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "socks"] }
+winreg = "0.53"
+url = "2"
+urlencoding = "2"
