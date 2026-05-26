@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, provide } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, provide } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Sidebar from "./components/Sidebar.vue";
@@ -11,6 +11,12 @@ import { musicState } from "./stores/music.js";
 
 const activePlugin = ref("home");
 const windowVisible = ref(true);
+const animating = ref(false);
+
+watch(activePlugin, () => {
+  animating.value = true;
+  setTimeout(() => { animating.value = false; }, 250);
+});
 provide("windowVisible", windowVisible);
 
 onMounted(async () => {
@@ -74,7 +80,7 @@ async function close() {
       
       <Sidebar :activePlugin="activePlugin" @select="activePlugin = $event" />
 
-      <div class="main-content">
+      <div class="main-content" :class="{ 'content-switch': animating }">
         <RunnerSettings v-if="activePlugin === 'runner'" />
         <MusicView v-show="activePlugin === 'music'" />
         <VpnView v-if="activePlugin === 'vpn'" />
@@ -213,5 +219,20 @@ html, body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 10px;
+}
+
+.content-switch {
+  animation: content-in 0.25s ease;
+}
+
+@keyframes content-in {
+  0% {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 </style>
