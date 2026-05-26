@@ -10,13 +10,21 @@ const preventHideOnText = ref(true);
 const saveSearchHistory = ref(false);
 const appWindow = getCurrentWindow();
 
+function clearIfNeeded() {
+  if (!saveSearchHistory.value) {
+    query.value = "";
+    results.value = [];
+  }
+}
+
+function hideLauncher() {
+  invoke("hide_launcher");
+  clearIfNeeded();
+}
+
 function onWindowKeydown(e) {
   if (e.key === "Escape") {
-    invoke("hide_launcher");
-    if (!saveSearchHistory.value) {
-      query.value = "";
-      results.value = [];
-    }
+    hideLauncher();
   }
 }
 
@@ -43,19 +51,26 @@ onMounted(async () => {
   const unlistenSettings = await listen("settings-changed", () => {
     loadSettings();
   });
+  const unlistenHidden = await listen("launcher-hidden", () => {
+    clearIfNeeded();
+  });
   window._focusUnlisten = unlistenFocus;
   window._settingsUnlisten = unlistenSettings;
+  window._hiddenUnlisten = unlistenHidden;
 });
 
 onUnmounted(() => {
+  clearTimeout(debounceTimer);
   window.removeEventListener("keydown", onWindowKeydown);
   if (window._focusUnlisten) window._focusUnlisten();
   if (window._settingsUnlisten) window._settingsUnlisten();
+  if (window._hiddenUnlisten) window._hiddenUnlisten();
 });
 const query = ref("");
 const results = ref([]);
 const selectedIndex = ref(-1);
-const iconCache = {};
+const MAX_ICON_CACHE = 200;
+const iconCache = new Map();
 
 let debounceTimer = null;
 
@@ -80,13 +95,18 @@ async function search(q) {
 
 function loadIcons(apps) {
   apps.forEach(async (app) => {
-    if (iconCache[app.path]) {
+    if (iconCache.has(app.path)) {
       const idx = results.value.findIndex(r => r.path === app.path);
-      if (idx >= 0) results.value[idx].icon = iconCache[app.path];
+      if (idx >= 0) results.value[idx].icon = iconCache.get(app.path);
       return;
     }
     const icon = await invoke("get_icon", { path: app.path });
-    iconCache[app.path] = icon;
+    if (!icon) return;
+    iconCache.set(app.path, icon);
+    if (iconCache.size > MAX_ICON_CACHE) {
+      const oldest = iconCache.keys().next().value;
+      iconCache.delete(oldest);
+    }
     const idx = results.value.findIndex(r => r.path === app.path);
     if (idx >= 0) results.value[idx].icon = icon;
   });
@@ -119,9 +139,7 @@ function onKeydown(e) {
     e.preventDefault();
     selectApp(results.value[selectedIndex.value]);
   } else if (e.key === "Escape") {
-    invoke("hide_launcher");
-    query.value = "";
-    results.value = [];
+    hideLauncher();
   }
 }
 </script>

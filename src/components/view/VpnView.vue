@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 const subUrl = ref("");
@@ -133,7 +133,7 @@ async function importContent() {
   }
 }
 
-const allNodes = () => {
+const allNodes = computed(() => {
   const nodes = [];
   for (const sub of subscriptions.value) {
     for (const node of sub.nodes) {
@@ -141,7 +141,7 @@ const allNodes = () => {
     }
   }
   return nodes;
-};
+});
 </script>
 
 <template>
@@ -170,11 +170,11 @@ const allNodes = () => {
     <div class="vpn-msg" v-if="msg">{{ msg }}</div>
 
     <!-- Node list -->
-    <div class="vpn-section nodes-section" v-if="allNodes().length">
-      <div class="section-title">节点 ({{ allNodes().length }})</div>
+    <div class="vpn-section nodes-section" v-if="allNodes.length">
+      <div class="section-title">节点 ({{ allNodes.length }})</div>
       <div class="node-list">
         <div
-          v-for="node in allNodes()"
+          v-for="node in allNodes"
           :key="node.raw"
           class="node-item"
           :class="{ active: activeNode?.raw === node.raw }"

@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted, provide } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import Sidebar from "./components/Sidebar.vue";
 import RunnerSettings from "./components/view/RunnerSettings.vue";
 import MusicView from "./components/view/MusicView.vue";
@@ -9,6 +10,24 @@ import GlobalSettings from "./components/view/GlobalSettings.vue";
 import { musicState } from "./stores/music.js";
 
 const activePlugin = ref("home");
+const windowVisible = ref(true);
+provide("windowVisible", windowVisible);
+
+onMounted(async () => {
+  const unlistenShown = await listen("main-window-shown", () => {
+    windowVisible.value = true;
+  });
+  const unlistenHidden = await listen("main-window-hidden", () => {
+    windowVisible.value = false;
+  });
+  window._winShownUnlisten = unlistenShown;
+  window._winHiddenUnlisten = unlistenHidden;
+});
+
+onUnmounted(() => {
+  window._winShownUnlisten?.();
+  window._winHiddenUnlisten?.();
+});
 
 const lyricText = computed(() => {
   return musicState.currentLyric || "";

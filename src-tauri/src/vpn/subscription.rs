@@ -1,5 +1,14 @@
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
+
+static SHARED_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .danger_accept_invalid_certs(true)
+        .build()
+        .expect("failed to build shared reqwest client")
+});
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyNode {
@@ -83,36 +92,50 @@ pub fn parse_subscription_content(content: &str) -> Vec<ProxyNode> {
 }
 
 async fn try_fetch(url: &str, proxy: Option<&str>) -> Result<String, String> {
-    let mut builder = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .danger_accept_invalid_certs(true);
-
-    if let Some(addr) = proxy {
+    let resp = if let Some(addr) = proxy {
         let proxy_url = if addr.starts_with("http") {
             addr.to_string()
         } else {
             format!("http://{}", addr)
         };
-        builder = builder.proxy(reqwest::Proxy::all(&proxy_url).map_err(|e| format!("代理配置错误: {}", e))?);
-    }
-
-    let client = builder.build().map_err(|e| format!("创建客户端失败: {}", e))?;
-
-    let resp = client
-        .get(url)
-        .header("User-Agent", "ClashforWindows/0.20.0")
-        .header("Accept", "text/plain, */*")
-        .send()
-        .await
-        .map_err(|e| {
-            let mut msg = format!("请求失败: {}", e);
-            if e.is_timeout() {
-                msg.push_str("\n连接超时");
-            } else if e.is_connect() {
-                msg.push_str("\n无法连接到服务器");
-            }
-            msg
-        })?;
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .danger_accept_invalid_certs(true)
+            .proxy(reqwest::Proxy::all(&proxy_url).map_err(|e| format!("代理配置错误: {}", e))?)
+            .build()
+            .map_err(|e| format!("创建客户端失败: {}", e))?;
+        client
+            .get(url)
+            .header("User-Agent", "ClashforWindows/0.20.0")
+            .header("Accept", "text/plain, */*")
+            .send()
+            .await
+            .map_err(|e| {
+                let mut msg = format!("请求失败: {}", e);
+                if e.is_timeout() {
+                    msg.push_str("\n连接超时");
+                } else if e.is_connect() {
+                    msg.push_str("\n无法连接到服务器");
+                }
+                msg
+            })?
+    } else {
+        SHARED_CLIENT
+            .get(url)
+            .header("User-Agent", "ClashforWindows/0.20.0")
+            .header("Accept", "text/plain, */*")
+            .send()
+            .await
+            .map_err(|e| {
+                let mut msg = format!("请求失败: {}", e);
+                if e.is_timeout() {
+                    msg.push_str("\n连接超时");
+                } else if e.is_connect() {
+                    msg.push_str("\n无法连接到服务器");
+                }
+                msg
+            })?
+    };
 
     if !resp.status().is_success() {
         return Err(format!(

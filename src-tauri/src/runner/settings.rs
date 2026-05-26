@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
@@ -12,8 +12,6 @@ pub struct Settings {
     pub prevent_hide_on_text: bool,
     #[serde(default = "default_false")]
     pub save_search_history: bool,
-    #[serde(default = "default_music_api_url")]
-    pub music_api_url: String,
     #[serde(default = "default_false")]
     pub autostart: bool,
     #[serde(default = "default_show_window_shortcut")]
@@ -27,7 +25,6 @@ impl Default for Settings {
             max_visible: default_max_visible(),
             prevent_hide_on_text: true,
             save_search_history: false,
-            music_api_url: default_music_api_url(),
             autostart: false,
             show_window_shortcut: default_show_window_shortcut(),
         }
@@ -38,7 +35,6 @@ fn default_shortcut() -> String { "Alt+Space".into() }
 fn default_max_visible() -> usize { 8 }
 fn default_true() -> bool { true }
 fn default_false() -> bool { false }
-fn default_music_api_url() -> String { "http://localhost:3000".into() }
 fn default_show_window_shortcut() -> String { "Alt+Shift+N".into() }
 
 pub struct SettingsState {
@@ -85,23 +81,6 @@ pub fn get_settings(state: tauri::State<SettingsState>) -> Settings {
 #[tauri::command]
 pub fn get_max_visible(state: tauri::State<SettingsState>) -> usize {
     state.settings.lock().unwrap().max_visible
-}
-
-#[tauri::command]
-pub fn get_music_api_url(state: tauri::State<SettingsState>) -> String {
-    state.settings.lock().unwrap().music_api_url.clone()
-}
-
-#[tauri::command]
-pub fn set_music_api_url(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<SettingsState>,
-    url: String,
-) -> Result<String, String> {
-    let mut s = state.settings.lock().map_err(|e| e.to_string())?;
-    s.music_api_url = url.trim().to_string();
-    save_settings(&app_handle, &s);
-    Ok(s.music_api_url.clone())
 }
 
 #[tauri::command]
@@ -156,9 +135,11 @@ pub fn register_show_window_shortcut(
                 if let Some(win) = app_handle.get_webview_window("main") {
                     if win.is_visible().unwrap_or(false) {
                         let _ = win.hide();
+                        let _ = app_handle.emit("main-window-hidden", ());
                     } else {
                         let _ = win.show();
                         let _ = win.set_focus();
+                        let _ = app_handle.emit("main-window-shown", ());
                     }
                 }
             }

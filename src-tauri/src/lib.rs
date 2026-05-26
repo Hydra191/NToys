@@ -1,6 +1,7 @@
 mod runner;
 mod vpn;
-use tauri::Manager;
+use std::fs;
+use tauri::{Emitter, Manager};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 use runner::launcher::{AppState, setup_launcher};
@@ -15,7 +16,31 @@ fn exit_app(app_handle: tauri::AppHandle) {
 fn hide_main(app_handle: tauri::AppHandle) {
     if let Some(win) = app_handle.get_webview_window("main") {
         let _ = win.hide();
+        let _ = app_handle.emit("main-window-hidden", ());
     }
+}
+
+#[tauri::command]
+fn get_ncm_cookie(app_handle: tauri::AppHandle) -> String {
+    let path = app_handle
+        .path()
+        .app_data_dir()
+        .expect("failed to resolve app data dir")
+        .join("ncm_cookie");
+    fs::read_to_string(&path).unwrap_or_default()
+}
+
+#[tauri::command]
+fn set_ncm_cookie(app_handle: tauri::AppHandle, cookie: String) {
+    let path = app_handle
+        .path()
+        .app_data_dir()
+        .expect("failed to resolve app data dir")
+        .join("ncm_cookie");
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(&path, cookie);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -70,6 +95,7 @@ pub fn run() {
                         if let Some(win) = app.get_webview_window("main") {
                             let _ = win.show();
                             let _ = win.set_focus();
+                            let _ = app.emit("main-window-shown", ());
                         }
                     }
                     "quit" => {
@@ -87,6 +113,7 @@ pub fn run() {
                         api.prevent_close();
                         if let Some(win) = handle.get_webview_window("main") {
                             let _ = win.hide();
+                            let _ = handle.emit("main-window-hidden", ());
                         }
                     }
                 });
@@ -104,11 +131,11 @@ pub fn run() {
             runner::launcher::update_settings,
             runner::settings::get_settings,
             runner::settings::get_max_visible,
-            runner::settings::get_music_api_url,
-            runner::settings::set_music_api_url,
             runner::settings::set_autostart,
             runner::settings::get_autostart,
             runner::settings::set_show_window_shortcut,
+            get_ncm_cookie,
+            set_ncm_cookie,
             exit_app,
             hide_main,
             vpn::add_subscription,

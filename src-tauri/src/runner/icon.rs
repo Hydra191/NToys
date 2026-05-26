@@ -3,7 +3,7 @@
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
-use image::codecs::png::PngEncoder;
+use image::codecs::webp::WebPEncoder;
 use image::ImageEncoder;
 use base64::Engine;
 
@@ -109,7 +109,7 @@ fn to_wide(s: &str) -> Vec<u16> {
     OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
 }
 
-fn hicon_to_png(hIcon: isize) -> Option<Vec<u8>> {
+fn hicon_to_webp(hIcon: isize) -> Option<Vec<u8>> {
     unsafe {
         let mut ii = ICONINFO {
             fIcon: 0,
@@ -122,8 +122,8 @@ fn hicon_to_png(hIcon: isize) -> Option<Vec<u8>> {
             return None;
         }
 
-        let w = 64;
-        let h = 64;
+        let w = 32;
+        let h = 32;
         let bmi = BITMAPINFOHEADER {
             biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
             biWidth: w,
@@ -196,16 +196,15 @@ fn hicon_to_png(hIcon: isize) -> Option<Vec<u8>> {
             chunk.swap(0, 2);
         }
 
-        let mut png = Vec::new();
-        let encoder = PngEncoder::new(&mut png);
-        encoder
-            .write_image(&pixels, w as u32, h as u32, image::ExtendedColorType::Rgba8)
+        let mut webp = Vec::new();
+        let encoder = WebPEncoder::new_lossless(&mut webp);
+        encoder.write_image(&pixels, w as u32, h as u32, image::ExtendedColorType::Rgba8)
             .ok()?;
-        Some(png)
+        Some(webp)
     }
 }
 
-/// Get the file icon via Windows shell as base64 PNG
+/// Get the file icon via Windows shell as base64 WebP
 pub fn get_icon_base64(path: &str) -> String {
     let wide = to_wide(path);
     let mut info = SHFILEINFOW {
@@ -228,28 +227,18 @@ pub fn get_icon_base64(path: &str) -> String {
             return String::new();
         }
 
-        let png = hicon_to_png(info.hIcon);
-        png.map(|data| base64::engine::general_purpose::STANDARD.encode(&data))
+        let webp = hicon_to_webp(info.hIcon);
+        webp.map(|data| base64::engine::general_purpose::STANDARD.encode(&data))
             .unwrap_or_default()
     }
 }
 
-/// Parse .lnk file to get display name
+/// Get display name from .lnk file path
 pub fn parse_lnk_info(lnk_path: &Path) -> (String, String) {
-    let fallback = lnk_path
+    let name = lnk_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_string();
-
-    // Use filename stem as the display name; lnk metadata often contains
-    // marketing taglines or internal labels that aren't user-friendly.
-    match std::fs::read(lnk_path) {
-        Ok(data) => {
-            let mut cursor = std::io::Cursor::new(&data);
-            let _ = parselnk::Lnk::new(&mut cursor);
-        }
-        Err(_) => {}
-    }
-    (fallback, String::new())
+    (name, String::new())
 }

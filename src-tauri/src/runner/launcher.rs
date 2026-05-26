@@ -11,7 +11,6 @@ use pinyin::ToPinyin;
 const LAUNCHER_W: f64 = 600.0;
 const LAUNCHER_H: f64 = 58.0;
 
-static HAS_FOCUSED: AtomicBool = AtomicBool::new(false);
 static PREVENT_HIDE: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Serialize)]
@@ -115,7 +114,12 @@ pub fn search_apps(
                 || a.pinyin_initials.contains(&query)
         })
         .take(50)
-        .cloned()
+        .map(|a| AppEntry {
+            name: a.name.clone(),
+            path: a.path.clone(),
+            pinyin: String::new(),
+            pinyin_initials: String::new(),
+        })
         .collect()
 }
 
@@ -167,7 +171,7 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
     .resizable(false)
     .position(0.0, off_y)
     .inner_size(LAUNCHER_W, LAUNCHER_H)
-    .visible(true)
+    .visible(false)
     .build()
     .expect("failed to create launcher window");
 
@@ -181,6 +185,7 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
                         0.0,
                         offscreen_y(&app_handle),
                     ));
+                    let _ = app_handle.emit("launcher-hidden", ());
                 }
             }
         }
@@ -204,11 +209,11 @@ fn toggle_launcher(app_handle: &tauri::AppHandle) {
             .unwrap_or(false);
         if is_offscreen {
             let _ = launcher.set_position(launcher_position(app_handle));
-            if HAS_FOCUSED.swap(true, Ordering::Relaxed) {
-                let _ = launcher.set_focus();
-            }
+            let _ = launcher.show();
+            let _ = launcher.set_focus();
         } else {
             let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(app_handle)));
+            let _ = app_handle.emit("launcher-hidden", ());
         }
     }
 }

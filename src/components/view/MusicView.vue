@@ -1,12 +1,13 @@
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted, inject } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 import { musicState } from "../../stores/music.js";
 
 // 部署到服务器后修改这里
 const API_BASE = "http://119.23.60.130:3000";
-const COOKIE_KEY = "ncm_cookie";
 const VOLUME_KEY = "ncm_volume";
 const PLAYBACK_KEY = "ncm_playback";
+const windowVisible = inject("windowVisible");
 
 const activeTab = ref("search");
 const query = ref("");
@@ -21,6 +22,7 @@ const duration = ref(0);
 const seeking = ref(false);
 const progressSliderEl = ref(null);
 const lyrics = ref([]);
+let lastLyricIdx = 0;
 let debounceTimer = null;
 const showVolume = ref(false);
 let volumeTimer = null;
@@ -44,6 +46,7 @@ onMounted(() => { if (audioEl.value) audioEl.value.volume = volume.value; });
 // ── playback persistence ─────────────────
 let savePlaybackTimer = null;
 function savePlayback() {
+  if (!windowVisible.value) return;
   clearTimeout(savePlaybackTimer);
   savePlaybackTimer = setTimeout(() => {
     if (!currentSong.value) return;
@@ -74,7 +77,7 @@ function restorePlayback() {
 }
 
 // ── login state ──────────────────────────
-const cookie = ref(localStorage.getItem(COOKIE_KEY) || "");
+const cookie = ref("");
 const userInfo = ref(null);
 const loginVisible = ref(false);
 const showUserMenu = ref(false);
@@ -86,7 +89,7 @@ let qrTimer = null;
 
 function logout() {
   cookie.value = "";
-  localStorage.removeItem(COOKIE_KEY);
+  invoke("set_ncm_cookie", { cookie: "" });
   userInfo.value = null;
   dailySongs.value = [];
   playlists.value = [];
@@ -97,7 +100,7 @@ function logout() {
 
 async function logoutAndShowQR() {
   cookie.value = "";
-  localStorage.removeItem(COOKIE_KEY);
+  invoke("set_ncm_cookie", { cookie: "" });
   userInfo.value = null;
   dailySongs.value = [];
   playlists.value = [];
@@ -132,7 +135,7 @@ function pollMenuQr() {
       else if (code === 803) {
         qrStatus.value = "登录成功!";
         clearInterval(qrTimer);
-        if (data.cookie) { cookie.value = data.cookie; localStorage.setItem(COOKIE_KEY, data.cookie); }
+        if (data.cookie) { cookie.value = data.cookie; invoke("set_ncm_cookie", { cookie: data.cookie }); }
         setTimeout(async () => {
           try {
             const ud = await api("/user/account");
@@ -167,20 +170,25 @@ const displaySongs = computed(() => {
 // Restore session and playback on mount
 (async () => {
   restorePlayback();
+  const saved = await invoke("get_ncm_cookie");
+  if (saved) cookie.value = saved;
   if (!cookie.value) return;
   try {
     const status = await api("/login/status");
     if (!status.data?.account) {
       cookie.value = "";
-      localStorage.removeItem(COOKIE_KEY);
+      invoke("set_ncm_cookie", { cookie: "" });
       return;
     }
     const ud = await api("/user/account");
     userInfo.value = ud.profile || ud.account || null;
     if (!userInfo.value) {
       cookie.value = "";
-      localStorage.removeItem(COOKIE_KEY);
+      invoke("set_ncm_cookie", { cookie: "" });
+      return;
     }
+    loadDaily();
+    loadPlaylists();
   } catch (e) { /* ignore */ }
 })();
 
@@ -191,7 +199,7 @@ async function api(path, options = {}) {
   const data = await res.json();
   if (data.cookie) {
     cookie.value = data.cookie;
-    localStorage.setItem(COOKIE_KEY, data.cookie);
+    invoke("set_ncm_cookie", { cookie: data.cookie });
   }
   return data;
 }
@@ -215,6 +223,7 @@ async function openLogin() {
 }
 
 function pollQr() {
+  clearInterval(qrTimer);
   qrTimer = setInterval(async () => {
     try {
       const data = await api(`/login/qr/check?key=${qrKey.value}&timestamp=${Date.now()}`);
@@ -223,7 +232,7 @@ function pollQr() {
       else if (code === 803) {
         qrStatus.value = "登录成功!";
         clearInterval(qrTimer);
-        if (data.cookie) { cookie.value = data.cookie; localStorage.setItem(COOKIE_KEY, data.cookie); }
+        if (data.cookie) { cookie.value = data.cookie; invoke("set_ncm_cookie", { cookie: data.cookie }); }
         setTimeout(async () => {
           try {
             const ud = await api("/user/account");
@@ -241,7 +250,17 @@ function pollQr() {
   }, 2000);
 }
 
-onUnmounted(() => { clearInterval(qrTimer); });
+onUnmounted(() => {
+  clearTimeout(debounceTimer);
+  clearTimeout(volumeTimer);
+  clearTimeout(savePlaybackTimer);
+  clearInterval(qrTimer);
+  if (audioEl.value) {
+    audioEl.value.pause();
+    audioEl.value.src = "";
+    audioEl.value.load();
+  }
+});
 
 // ── tab switching ─────────────────────────
 function switchTab(tab) {
@@ -351,8 +370,10 @@ async function fetchLyrics(song) {
     const data = await api(`/lyric?id=${song.id}`);
     const lrc = data.lrc?.lyric || "";
     lyrics.value = parseLRC(lrc);
+    lastLyricIdx = 0;
   } catch (e) {
     lyrics.value = [];
+    lastLyricIdx = 0;
   }
 }
 
@@ -394,11 +415,13 @@ function onTimeUpdate() {
     currentTime.value = audioEl.value.currentTime;
     savePlayback();
   }
+  if (!windowVisible.value) return;
   const t = audioEl.value?.currentTime || 0;
   let line = "";
-  for (let i = 0; i < lyrics.value.length; i++) {
+  for (let i = lastLyricIdx; i < lyrics.value.length; i++) {
     if (t >= lyrics.value[i].time) {
       line = lyrics.value[i].text;
+      lastLyricIdx = i;
     } else {
       break;
     }
@@ -432,6 +455,7 @@ function onAudioEnded() {
   playing.value = false;
   musicState.playing = false;
   lyrics.value = [];
+  lastLyricIdx = 0;
   musicState.currentLyric = "";
   playNext();
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import ToggleSwitch from "../settingcomponents/ToggleSwitch.vue";
 import RangeSlider from "../settingcomponents/RangeSlider.vue";
@@ -12,6 +12,7 @@ const preventHideOnText = ref(true);
 const saveSearchHistory = ref(false);
 const dirty = ref(false);
 const saved = ref(false);
+let savedTimer = null;
 
 onMounted(async () => {
   try {
@@ -24,6 +25,10 @@ onMounted(async () => {
   } catch (e) {
     console.error("Failed to load settings:", e);
   }
+});
+
+onUnmounted(() => {
+  clearTimeout(savedTimer);
 });
 
 function onShortcutChange(v) {
@@ -56,7 +61,7 @@ async function saveSettings() {
     });
     dirty.value = false;
     saved.value = true;
-    setTimeout(() => {
+    savedTimer = setTimeout(() => {
       saved.value = false;
     }, 2000);
   } catch (e) {
