@@ -14,8 +14,10 @@ const windowVisible = ref(true);
 const animating = ref(false);
 
 watch(activePlugin, () => {
-  animating.value = true;
-  setTimeout(() => { animating.value = false; }, 250);
+  animating.value = false;
+  requestAnimationFrame(() => {
+    animating.value = true;
+  });
 });
 provide("windowVisible", windowVisible);
 
