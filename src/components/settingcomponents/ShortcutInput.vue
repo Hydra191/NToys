@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 
 const props = defineProps({
   modelValue: String,
@@ -19,13 +19,16 @@ watch(
   }
 );
 
-watch(display, async () => {
-  await nextTick();
-  if (inputEl.value && mirrorEl.value) {
-    const w = mirrorEl.value.offsetWidth;
-    inputEl.value.style.width = w + "px";
-  }
-});
+function syncWidth() {
+  nextTick(() => {
+    if (inputEl.value && mirrorEl.value) {
+      inputEl.value.style.width = mirrorEl.value.offsetWidth + "px";
+    }
+  });
+}
+
+watch(display, syncWidth);
+onMounted(syncWidth);
 
 function onKeyCapture(e) {
   const key = e.key;
@@ -104,8 +107,6 @@ function onKeyCapture(e) {
   font-family: inherit;
   outline: none;
   cursor: text;
-  min-width: 80px;
-  width: 120px;
   box-sizing: border-box;
 }
 
