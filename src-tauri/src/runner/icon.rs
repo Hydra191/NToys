@@ -5,7 +5,6 @@ use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use image::codecs::webp::WebPEncoder;
 use image::ImageEncoder;
-use base64::Engine;
 
 
 #[link(name = "Shell32")]
@@ -204,8 +203,8 @@ fn hicon_to_webp(hIcon: isize) -> Option<Vec<u8>> {
     }
 }
 
-/// Get the file icon via Windows shell as base64 WebP
-pub fn get_icon_base64(path: &str) -> String {
+/// Extract the icon from a file path and return WebP bytes
+pub fn extract_icon(path: &str) -> Option<Vec<u8>> {
     let wide = to_wide(path);
     let mut info = SHFILEINFOW {
         hIcon: 0,
@@ -224,12 +223,10 @@ pub fn get_icon_base64(path: &str) -> String {
             SHGFI_ICON,
         );
         if result == 0 || info.hIcon == 0 {
-            return String::new();
+            return None;
         }
 
-        let webp = hicon_to_webp(info.hIcon);
-        webp.map(|data| base64::engine::general_purpose::STANDARD.encode(&data))
-            .unwrap_or_default()
+        hicon_to_webp(info.hIcon)
     }
 }
 

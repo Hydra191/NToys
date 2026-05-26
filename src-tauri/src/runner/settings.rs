@@ -11,8 +11,6 @@ pub struct Settings {
     #[serde(default = "default_true")]
     pub prevent_hide_on_text: bool,
     #[serde(default = "default_false")]
-    pub save_search_history: bool,
-    #[serde(default = "default_false")]
     pub autostart: bool,
     #[serde(default = "default_show_window_shortcut")]
     pub show_window_shortcut: String,
@@ -24,7 +22,6 @@ impl Default for Settings {
             shortcut: default_shortcut(),
             max_visible: default_max_visible(),
             prevent_hide_on_text: true,
-            save_search_history: false,
             autostart: false,
             show_window_shortcut: default_show_window_shortcut(),
         }

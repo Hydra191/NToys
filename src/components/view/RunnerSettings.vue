@@ -9,7 +9,6 @@ const shortcut = ref("Alt+Space");
 const maxVisible = ref(8);
 const sliderValue = ref(8);
 const preventHideOnText = ref(true);
-const saveSearchHistory = ref(false);
 const dirty = ref(false);
 const saved = ref(false);
 let savedTimer = null;
@@ -21,7 +20,6 @@ onMounted(async () => {
     maxVisible.value = s.max_visible;
     sliderValue.value = s.max_visible;
     preventHideOnText.value = s.prevent_hide_on_text ?? true;
-    saveSearchHistory.value = s.save_search_history ?? false;
   } catch (e) {
     console.error("Failed to load settings:", e);
   }
@@ -57,7 +55,6 @@ async function saveSettings() {
       shortcut: shortcut.value,
       maxVisible: maxVisible.value,
       preventHideOnText: preventHideOnText.value,
-      saveSearchHistory: saveSearchHistory.value,
     });
     dirty.value = false;
     saved.value = true;
@@ -93,10 +90,6 @@ async function saveSettings() {
       
         <div class="settings-group">
           <ToggleSwitch v-model="preventHideOnText" label="输入框有内容时保持窗口" @update:model-value="dirty = true; saved = false" />
-        </div>
-
-        <div class="settings-group">
-          <ToggleSwitch v-model="saveSearchHistory" label="保留搜索历史" @update:model-value="dirty = true; saved = false" />
         </div>
 
     </div>

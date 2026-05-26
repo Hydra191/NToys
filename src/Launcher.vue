@@ -7,14 +7,11 @@ import { listen } from "@tauri-apps/api/event";
 const ITEM_H = 52;
 const MAX_VISIBLE = ref(8);
 const preventHideOnText = ref(true);
-const saveSearchHistory = ref(false);
 const appWindow = getCurrentWindow();
 
 function clearIfNeeded() {
-  if (!saveSearchHistory.value) {
-    query.value = "";
-    results.value = [];
-  }
+  query.value = "";
+  results.value = [];
 }
 
 function hideLauncher() {
@@ -33,7 +30,6 @@ async function loadSettings() {
     const s = await invoke("get_settings");
     MAX_VISIBLE.value = s.max_visible;
     preventHideOnText.value = s.prevent_hide_on_text ?? true;
-    saveSearchHistory.value = s.save_search_history ?? false;
   } catch (e) {
     console.error("Failed to load settings:", e);
   }
@@ -45,7 +41,7 @@ onMounted(async () => {
   const unlistenFocus = await appWindow.onFocusChanged(({ payload: focused }) => {
     if (focused) {
       const input = document.querySelector(".launcher-input");
-      if (input) input.focus();
+      if (input && document.activeElement !== input) input.focus();
     }
   });
   const unlistenSettings = await listen("settings-changed", () => {
@@ -94,22 +90,35 @@ async function search(q) {
 }
 
 function loadIcons(apps) {
-  apps.forEach(async (app) => {
+  // Serve cache hits first, collect cache misses
+  const missing = [];
+  for (const app of apps) {
     if (iconCache.has(app.path)) {
       const idx = results.value.findIndex(r => r.path === app.path);
       if (idx >= 0) results.value[idx].icon = iconCache.get(app.path);
-      return;
+    } else {
+      missing.push(app);
     }
-    const icon = await invoke("get_icon", { path: app.path });
-    if (!icon) return;
-    iconCache.set(app.path, icon);
-    if (iconCache.size > MAX_ICON_CACHE) {
-      const oldest = iconCache.keys().next().value;
-      iconCache.delete(oldest);
+  }
+  if (missing.length === 0) return;
+  // Batch processing: 5 concurrent max to limit memory spikes
+  const BATCH = 5;
+  let i = 0;
+  async function next() {
+    while (i < missing.length) {
+      const app = missing[i++];
+      const dataUrl = await invoke("get_icon", { path: app.path });
+      if (!dataUrl) continue;
+      iconCache.set(app.path, dataUrl);
+      if (iconCache.size > MAX_ICON_CACHE) {
+        const oldest = iconCache.keys().next().value;
+        iconCache.delete(oldest);
+      }
+      const idx = results.value.findIndex(r => r.path === app.path);
+      if (idx >= 0) results.value[idx].icon = dataUrl;
     }
-    const idx = results.value.findIndex(r => r.path === app.path);
-    if (idx >= 0) results.value[idx].icon = icon;
-  });
+  }
+  Array.from({ length: Math.min(BATCH, missing.length) }, () => next());
 }
 
 function resizeWindow(count) {
@@ -122,10 +131,8 @@ function resizeWindow(count) {
 
 function selectApp(app) {
   invoke("launch_app", { path: app.path });
-  if (!saveSearchHistory.value) {
-    query.value = "";
-    results.value = [];
-  }
+  query.value = "";
+  results.value = [];
 }
 
 function onKeydown(e) {
@@ -145,7 +152,7 @@ function onKeydown(e) {
 </script>
 
 <template>
-  <div class="launcher-container" @mousedown="appWindow.setFocus()">
+  <div class="launcher-container">
     <div class="search-bar">
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8" />
@@ -173,7 +180,7 @@ function onKeydown(e) {
         <img
           v-if="app.icon"
           class="result-icon"
-          :src="'data:image/png;base64,' + app.icon"
+          :src="app.icon"
         />
         <span v-else class="result-icon-placeholder">{{ app.name[0] }}</span>
         <span class="result-name">{{ app.name }}</span>

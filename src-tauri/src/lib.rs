@@ -1,9 +1,11 @@
 mod runner;
 mod vpn;
 use std::fs;
+use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Pid, ProcessesToUpdate, System};
 use runner::launcher::{AppState, setup_launcher};
 use runner::settings::{SettingsState, load_settings, register_show_window_shortcut};
 
@@ -43,6 +45,45 @@ fn set_ncm_cookie(app_handle: tauri::AppHandle, cookie: String) {
     let _ = fs::write(&path, cookie);
 }
 
+#[derive(serde::Serialize)]
+struct SystemStats {
+    cpu: f64,
+    memory_total: u64,
+    memory_used: u64,
+    self_memory_mb: f64,
+}
+
+#[tauri::command]
+fn get_system_stats(sys_state: tauri::State<SystemState>) -> SystemStats {
+    let mut sys = sys_state.sys.lock().unwrap();
+    sys.refresh_cpu_specifics(CpuRefreshKind::nothing().with_cpu_usage());
+    sys.refresh_memory_specifics(MemoryRefreshKind::nothing().with_ram());
+
+    let cpu = sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
+
+    let pid = Pid::from_u32(std::process::id());
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&[pid]),
+        true,
+        sysinfo::ProcessRefreshKind::nothing().with_memory(),
+    );
+    let self_memory_mb = sys
+        .process(pid)
+        .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
+        .unwrap_or(0.0);
+
+    SystemStats {
+        cpu: (cpu as f64).round(),
+        memory_total: sys.total_memory(),
+        memory_used: sys.used_memory(),
+        self_memory_mb: (self_memory_mb * 10.0).round() / 10.0,
+    }
+}
+
+struct SystemState {
+    sys: Mutex<System>,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let apps = runner::launcher::scan_start_menu();
@@ -63,6 +104,10 @@ pub fn run() {
 
             // VPN state
             let vpn_data = vpn::load_vpn_data(app.handle());
+            app.manage(SystemState {
+                sys: Mutex::new(System::new_all()),
+            });
+
             app.manage(vpn::VpnState {
                 subscriptions: std::sync::Mutex::new(vpn_data.subscriptions),
                 active_node: std::sync::Mutex::new(vpn_data.active_node),
@@ -136,6 +181,7 @@ pub fn run() {
             runner::settings::set_show_window_shortcut,
             get_ncm_cookie,
             set_ncm_cookie,
+            get_system_stats,
             exit_app,
             hide_main,
             vpn::add_subscription,

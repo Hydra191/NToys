@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar.vue";
 import RunnerSettings from "./components/view/RunnerSettings.vue";
 import MusicView from "./components/view/MusicView.vue";
 import VpnView from "./components/view/VpnView.vue";
+import HomeView from "./components/view/HomeView.vue";
 import GlobalSettings from "./components/view/GlobalSettings.vue";
 import { musicState } from "./stores/music.js";
 
@@ -83,6 +84,7 @@ async function close() {
       <Sidebar :activePlugin="activePlugin" @select="activePlugin = $event" />
 
       <div class="main-content" :class="{ 'content-switch': animating }">
+        <HomeView v-if="activePlugin === 'home'" />
         <RunnerSettings v-if="activePlugin === 'runner'" />
         <MusicView v-show="activePlugin === 'music'" />
         <VpnView v-if="activePlugin === 'vpn'" />
@@ -218,8 +220,6 @@ html, body {
   padding: 24px;
   overflow: hidden;
   background: rgba(2, 2, 2, 0.753);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-radius: 10px;
 }
 

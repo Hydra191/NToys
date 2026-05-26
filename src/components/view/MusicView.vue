@@ -325,13 +325,20 @@ function backToPlaylists() {
 }
 
 // ── helpers ───────────────────────────────
+function ncmThumb(url, size) {
+  if (!url) return "";
+  if (!url.includes("music.126.net")) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}param=${size}y${size}`;
+}
+
 function formatSong(s) {
   return {
     id: s.id,
     name: s.name,
     artists: (s.ar || s.artists || []).map((a) => a.name).join(" / "),
     album: (s.al || s.album)?.name || "",
-    cover: (s.al || s.album)?.picUrl || "",
+    cover: ncmThumb((s.al || s.album)?.picUrl || "", 80),
     duration: formatDuration(s.dt || s.duration),
   };
 }
@@ -504,7 +511,7 @@ function onVolumeInput(e) {
       <div class="header-right">
         <button v-if="!userInfo" class="login-btn" @click="openLogin">登录</button>
         <div v-else class="user-badge" @click.stop="showUserMenu = true; showLoginInMenu = false">
-          <img v-if="userInfo.avatarUrl" class="user-avatar" :src="userInfo.avatarUrl"
+          <img v-if="userInfo.avatarUrl" class="user-avatar" :src="ncmThumb(userInfo.avatarUrl, 100)"
             referrerpolicy="no-referrer" crossorigin="anonymous"
             @error="userInfo.avatarUrl = ''" />
           <span v-else class="user-avatar-placeholder">{{ (userInfo.nickname || 'U')[0] }}</span>
@@ -549,7 +556,7 @@ function onVolumeInput(e) {
     <div v-if="activeTab === 'playlist' && !currentPlaylist" class="playlist-grid">
       <div v-if="loading" class="loading">加载中...</div>
       <div v-for="pl in playlists" :key="pl.id" class="playlist-card" @click="openPlaylist(pl)">
-        <img v-if="pl.coverImgUrl" class="playlist-cover" :src="pl.coverImgUrl" referrerpolicy="no-referrer" />
+        <img v-if="pl.coverImgUrl" class="playlist-cover" :src="ncmThumb(pl.coverImgUrl, 200)" referrerpolicy="no-referrer" />
         <div v-else class="playlist-cover-placeholder">{{ pl.name[0] }}</div>
         <span class="playlist-card-name">{{ pl.name }}</span>
         <span class="playlist-card-count">{{ pl.trackCount }}首</span>
@@ -651,7 +658,7 @@ function onVolumeInput(e) {
       <div class="user-menu-popup">
         <button class="menu-close-btn" @click="showUserMenu = false; showLoginInMenu = false">&times;</button>
         <template v-if="!showLoginInMenu">
-          <img v-if="userInfo?.avatarUrl" class="menu-avatar-large" :src="userInfo.avatarUrl"
+          <img v-if="userInfo?.avatarUrl" class="menu-avatar-large" :src="ncmThumb(userInfo.avatarUrl, 100)"
             referrerpolicy="no-referrer" crossorigin="anonymous"
             @error="userInfo.avatarUrl = ''" />
           <span v-else class="menu-avatar-placeholder">{{ (userInfo?.nickname || 'U')[0] }}</span>
@@ -882,7 +889,6 @@ function onVolumeInput(e) {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
 }
 .player-cover {

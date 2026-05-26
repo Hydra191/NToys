@@ -1,3 +1,5 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use serde::Serialize;
@@ -12,6 +14,7 @@ const LAUNCHER_W: f64 = 600.0;
 const LAUNCHER_H: f64 = 58.0;
 
 static PREVENT_HIDE: AtomicBool = AtomicBool::new(false);
+static FOCUS_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[derive(Clone, Serialize)]
 pub struct AppEntry {
@@ -124,8 +127,33 @@ pub fn search_apps(
 }
 
 #[tauri::command]
-pub fn get_icon(path: String) -> String {
-    icon::get_icon_base64(&path)
+pub fn get_icon(app_handle: tauri::AppHandle, path: String) -> String {
+    let cache_dir = app_handle
+        .path()
+        .app_data_dir()
+        .expect("failed to resolve app data dir")
+        .join("icons");
+    let _ = std::fs::create_dir_all(&cache_dir);
+
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    let hash = hasher.finish();
+    let file_path = cache_dir.join(format!("{:x}.webp", hash));
+
+    if !file_path.exists() {
+        if let Some(data) = icon::extract_icon(&path) {
+            let _ = std::fs::write(&file_path, &data);
+            let b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data);
+            return format!("data:image/webp;base64,{}", b64);
+        }
+        return String::new();
+    }
+    // read from disk cache
+    if let Ok(data) = std::fs::read(&file_path) {
+        let b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data);
+        return format!("data:image/webp;base64,{}", b64);
+    }
+    String::new()
 }
 
 #[tauri::command]
@@ -134,6 +162,7 @@ pub fn launch_app(app_handle: tauri::AppHandle, path: String) {
         .args(["/c", "start", "", &path])
         .spawn();
     if let Some(launcher) = app_handle.get_webview_window("launcher") {
+        let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
         let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(&app_handle)));
     }
 }
@@ -141,6 +170,7 @@ pub fn launch_app(app_handle: tauri::AppHandle, path: String) {
 #[tauri::command]
 pub fn hide_launcher(app_handle: tauri::AppHandle) {
     if let Some(launcher) = app_handle.get_webview_window("launcher") {
+        let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
         let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(&app_handle)));
     }
 }
@@ -178,16 +208,30 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
     let app_handle = app.handle().clone();
     launcher.on_window_event(move |event| {
         use tauri::WindowEvent;
-        if let WindowEvent::Focused(false) = event {
-            if !PREVENT_HIDE.load(Ordering::Relaxed) {
-                if let Some(win) = app_handle.get_webview_window("launcher") {
-                    let _ = win.set_position(PhysicalPosition::new(
-                        0.0,
-                        offscreen_y(&app_handle),
-                    ));
-                    let _ = app_handle.emit("launcher-hidden", ());
+        match event {
+            WindowEvent::Focused(false) => {
+                if PREVENT_HIDE.load(Ordering::Relaxed) {
+                    return;
                 }
+                FOCUS_GEN.fetch_add(1, Ordering::Relaxed);
+                let gen = FOCUS_GEN.load(Ordering::Relaxed);
+                let h = app_handle.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    if FOCUS_GEN.load(Ordering::Relaxed) != gen {
+                        return; // focus changed again, cancel
+                    }
+                    if let Some(win) = h.get_webview_window("launcher") {
+                        let _ = h.emit("launcher-hidden", ());
+                        let _ = win.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
+                        let _ = win.set_position(PhysicalPosition::new(0.0, offscreen_y(&h)));
+                    }
+                });
             }
+            WindowEvent::Focused(true) => {
+                FOCUS_GEN.fetch_add(1, Ordering::Relaxed);
+            }
+            _ => {}
         }
     });
 
@@ -208,12 +252,15 @@ fn toggle_launcher(app_handle: &tauri::AppHandle) {
             .map(|p| (p.y as f64) >= screen_h - LAUNCHER_H)
             .unwrap_or(false);
         if is_offscreen {
+            let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
             let _ = launcher.set_position(launcher_position(app_handle));
             let _ = launcher.show();
             let _ = launcher.set_focus();
+            let _ = launcher.eval("window.dispatchEvent(new Event('resize'));");
         } else {
-            let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(app_handle)));
             let _ = app_handle.emit("launcher-hidden", ());
+            let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
+            let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(app_handle)));
         }
     }
 }
@@ -247,14 +294,12 @@ pub fn update_settings(
     shortcut: String,
     max_visible: usize,
     prevent_hide_on_text: bool,
-    save_search_history: bool,
 ) -> Result<settings::Settings, String> {
     let mut s = settings_state.settings.lock().map_err(|e| e.to_string())?;
     let old = s.shortcut.clone();
     s.shortcut = shortcut.clone();
     s.max_visible = max_visible;
     s.prevent_hide_on_text = prevent_hide_on_text;
-    s.save_search_history = save_search_history;
     settings::save_settings(&app_handle, &s);
     if shortcut != old {
         app_handle.global_shortcut().unregister(old.as_str()).ok();
