@@ -72,8 +72,6 @@ async function saveSettings() {
 <template>
   <div class="settings-panel">
     <div class="settings-body">
-      <h2>Runner</h2>
-      <p class="plugin-desc">搜索软件然后快速启动.</p>
 
       <div class="settings-group">
         <ShortcutInput v-model="shortcut" label="快捷键" @update:model-value="onShortcutChange" />

@@ -9,6 +9,7 @@ import VpnView from "./components/view/VpnView.vue";
 import HomeView from "./components/view/HomeView.vue";
 import GlobalSettings from "./components/view/GlobalSettings.vue";
 import { musicState } from "./stores/music.js";
+import lunaIcon from "./assets/icon/luna.svg";
 
 const activePlugin = ref("home");
 const windowVisible = ref(true);
@@ -22,7 +23,32 @@ watch(activePlugin, () => {
 });
 provide("windowVisible", windowVisible);
 
+// ── animated title ──
+const fullTitle = "LUNA TOYS";
+const titleIndex = ref(0);
+let titleTimer = null;
+let titleForward = true;
+
+function startTitleAnimation() {
+  titleTimer = setInterval(() => {
+    if (titleForward) {
+      titleIndex.value++;
+      if (titleIndex.value >= fullTitle.length) {
+        titleForward = false;
+      }
+    } else {
+      titleIndex.value--;
+      if (titleIndex.value < 0) {
+        titleForward = true;
+      }
+    }
+  }, 800);
+}
+
+const animatedTitle = computed(() => fullTitle.slice(0, titleIndex.value + 1) || '\xa0');
+
 onMounted(async () => {
+  startTitleAnimation();
   const unlistenShown = await listen("main-window-shown", () => {
     windowVisible.value = true;
   });
@@ -34,6 +60,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  clearInterval(titleTimer);
   window._winShownUnlisten?.();
   window._winHiddenUnlisten?.();
 });
@@ -58,7 +85,8 @@ async function close() {
 
         <div class="titlebar-title">
 
-          <span>NToys Beta</span>
+          <img :src="lunaIcon" class="titlebar-icon" alt="luna" />
+          <h2>{{ animatedTitle }}</h2>
         </div>
 
         <div class="titlebar-lyrics" v-if="lyricText">
@@ -76,11 +104,11 @@ async function close() {
 
       </div>
 
-    </div>  
+    </div>
 
     <div class="app-body">
 
-      
+
       <Sidebar :activePlugin="activePlugin" @select="activePlugin = $event" />
 
       <div class="main-content" :class="{ 'content-switch': animating }">
@@ -106,9 +134,9 @@ async function close() {
 html, body {
   height: 100%;
   overflow: hidden;
-  background: linear-gradient(135deg, rgb(20, 14, 30) 0%, rgb(30, 18, 42) 40%, rgb(18, 16, 28) 100%);
-  color: rgba(255, 255, 255, 0.85);
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  background: rgba(19, 19, 19, 0.2);
+  color: rgba(255, 255, 255, 1);
+  font-family: 'Google Sans', sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -135,11 +163,27 @@ html, body {
   position: relative;
 }
 .titlebar-title {
-  width: 140px;
-  background: rgba(0, 0, 0, 0.6);
+  min-width: 130px;
+  background: rgba(138, 138, 138, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  padding: 10px 30px;
+  padding: 6px 12px;
   margin: 24px 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.titlebar-title h2 {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.titlebar-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  filter: brightness(0) invert(1);
 }
 .titlebar-lyrics {
   position: absolute;
@@ -166,7 +210,8 @@ html, body {
   display: flex;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(138, 138, 138, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 4px 4px;
   gap: 2px;
@@ -209,7 +254,7 @@ html, body {
   min-height: 0;
   display: flex;
   padding: 24px 12px 12px;
-  gap: 12px;
+  gap: 8px;
   -webkit-app-region: no-drag;
 }
 
@@ -219,7 +264,8 @@ html, body {
   min-height: 0;
   padding: 24px;
   overflow: hidden;
-  background: rgba(2, 2, 2, 0.753);
+  background: rgba(138, 138, 138, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
 }
 

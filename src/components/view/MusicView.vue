@@ -507,7 +507,6 @@ function onVolumeInput(e) {
   <div class="music-panel">
     <!-- Header -->
     <div class="music-header">
-      <h2>Music</h2>
       <div class="header-right">
         <button v-if="!userInfo" class="login-btn" @click="openLogin">登录</button>
         <div v-else class="user-badge" @click.stop="showUserMenu = true; showLoginInMenu = false">
@@ -518,23 +517,27 @@ function onVolumeInput(e) {
           <span class="user-nickname">{{ userInfo.nickname }}</span>
         </div>
       </div>
-    </div>
+          <div class="nav-tabs">
 
-    <!-- Nav tabs -->
-    <div class="nav-tabs">
-      <button class="nav-tab" :class="{ active: activeTab === 'search' }" @click="switchTab('search')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        搜索歌曲
-      </button>
       <button class="nav-tab" :class="{ active: activeTab === 'daily' }" @click="switchTab('daily')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         日推歌曲
       </button>
+
       <button class="nav-tab" :class="{ active: activeTab === 'playlist' }" @click="switchTab('playlist')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         个人歌单
       </button>
+
+      <button class="nav-tab" :class="{ active: activeTab === 'search' }" @click="switchTab('search')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        搜索歌曲
+      </button>
     </div>
+    </div>
+
+    <!-- Nav tabs -->
+
 
     <!-- Search bar (search tab only) -->
     <div v-if="activeTab === 'search'" class="search-bar">

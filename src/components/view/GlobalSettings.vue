@@ -34,7 +34,6 @@ async function onShortcutChange(val) {
 
 <template>
   <div class="global-settings-panel" v-if="!loading">
-    <h2>Settings</h2>
     <div class="settings-section">
       <ToggleSwitch :modelValue="autostart" @update:modelValue="onAutostartChange" label="开机自启动" />
     </div>

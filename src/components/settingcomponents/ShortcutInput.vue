@@ -100,7 +100,7 @@ function onKeyCapture(e) {
 .shortcut-input {
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
   color: #fff;
   font-size: 14px;

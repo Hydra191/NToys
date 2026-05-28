@@ -147,14 +147,13 @@ const allNodes = computed(() => {
 <template>
   <div class="vpn-panel">
     <div class="vpn-header">
-      <h2>VPN</h2>
-      <div class="header-right">
         <button class="add-btn" @click="showModal = true" title="管理订阅">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
             <line x1="7" y1="2" x2="7" y2="12"/>
             <line x1="2" y1="7" x2="12" y2="7"/>
           </svg>
         </button>
+      <div class="header-right">
         <button
           class="toggle-btn"
           :class="{ on: coreRunning, loading: loading }"

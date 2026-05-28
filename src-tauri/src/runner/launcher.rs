@@ -4,14 +4,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
+use tauri::utils::config::WindowEffectsConfig;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use crate::runner::icon;
 use crate::runner::settings::{self, SettingsState};
 use pinyin::ToPinyin;
 
-const LAUNCHER_W: f64 = 600.0;
-const LAUNCHER_H: f64 = 58.0;
+const LAUNCHER_W: f64 = 500.0;
+const LAUNCHER_H: f64 = 50.0;
 
 static PREVENT_HIDE: AtomicBool = AtomicBool::new(false);
 static FOCUS_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -199,11 +200,17 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
     .always_on_top(true)
     .skip_taskbar(true)
     .resizable(false)
+    .transparent(true)
     .position(0.0, off_y)
     .inner_size(LAUNCHER_W, LAUNCHER_H)
     .visible(false)
     .build()
     .expect("failed to create launcher window");
+
+    let config: WindowEffectsConfig = serde_json::from_value(serde_json::json!({
+        "effects": ["acrylic"],
+    })).unwrap();
+    let _ = launcher.set_effects(config);
 
     let app_handle = app.handle().clone();
     launcher.on_window_event(move |event| {
