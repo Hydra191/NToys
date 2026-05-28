@@ -45,6 +45,29 @@ fn set_ncm_cookie(app_handle: tauri::AppHandle, cookie: String) {
     let _ = fs::write(&path, cookie);
 }
 
+#[tauri::command]
+fn get_playback_state(app_handle: tauri::AppHandle) -> String {
+    let path = app_handle
+        .path()
+        .app_data_dir()
+        .expect("failed to resolve app data dir")
+        .join("playback_state");
+    fs::read_to_string(&path).unwrap_or_default()
+}
+
+#[tauri::command]
+fn set_playback_state(app_handle: tauri::AppHandle, state: String) {
+    let path = app_handle
+        .path()
+        .app_data_dir()
+        .expect("failed to resolve app data dir")
+        .join("playback_state");
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(&path, state);
+}
+
 #[derive(serde::Serialize)]
 struct SystemStats {
     cpu: f64,
@@ -181,6 +204,8 @@ pub fn run() {
             runner::settings::set_show_window_shortcut,
             get_ncm_cookie,
             set_ncm_cookie,
+            get_playback_state,
+            set_playback_state,
             get_system_stats,
             exit_app,
             hide_main,

@@ -6,7 +6,6 @@ import { musicState } from "../../stores/music.js";
 // 部署到服务器后修改这里
 const API_BASE = "http://119.23.60.130:3000";
 const VOLUME_KEY = "ncm_volume";
-const PLAYBACK_KEY = "ncm_playback";
 const windowVisible = inject("windowVisible");
 
 const activeTab = ref("search");
@@ -25,7 +24,9 @@ const lyrics = ref([]);
 let lastLyricIdx = 0;
 let debounceTimer = null;
 const showVolume = ref(false);
+const showQueue = ref(false);
 let volumeTimer = null;
+let queueTimer = null;
 
 function onVolumeEnter() {
   clearTimeout(volumeTimer);
@@ -38,6 +39,25 @@ function onVolumeLeave() {
   }, 250);
 }
 
+function onQueueEnter() {
+  clearTimeout(queueTimer);
+  showQueue.value = true;
+}
+
+function onQueueLeave() {
+  queueTimer = setTimeout(() => {
+    showQueue.value = false;
+  }, 250);
+}
+
+function jumpToQueueSong(song) {
+  const idx = playQueue.value.findIndex(s => s.id === song.id);
+  if (idx < 0) return;
+  queueIndex.value = idx;
+  savePlaybackNow();
+  playQueueSong(song);
+}
+
 watch(currentSong, (s) => { musicState.currentSong = s; });
 watch(playing, (p) => { musicState.playing = p; });
 watch(volume, (v) => { localStorage.setItem(VOLUME_KEY, v); if (audioEl.value) audioEl.value.volume = v; });
@@ -45,28 +65,50 @@ onMounted(() => { if (audioEl.value) audioEl.value.volume = volume.value; });
 
 // ── playback persistence ─────────────────
 let savePlaybackTimer = null;
+let lastSavedTime = 0;
+
+function buildPlaybackState() {
+  return JSON.stringify({
+    song: currentSong.value,
+    time: currentTime.value,
+    tab: activeTab.value,
+    playlist: currentPlaylist.value,
+    queue: playQueue.value,
+    queueIdx: queueIndex.value,
+    shuffle: shuffle.value,
+  });
+}
+
+/** Save progress at most every 15 seconds (avoids flooding disk) */
 function savePlayback() {
-  if (!windowVisible.value) return;
+  const t = currentTime.value;
+  if (Math.abs(t - lastSavedTime) < 15) return;
+  lastSavedTime = t;
   clearTimeout(savePlaybackTimer);
   savePlaybackTimer = setTimeout(() => {
     if (!currentSong.value) return;
-    const state = {
-      song: currentSong.value,
-      time: currentTime.value,
-      tab: activeTab.value,
-      playlist: currentPlaylist.value,
-    };
-    localStorage.setItem(PLAYBACK_KEY, JSON.stringify(state));
-  }, 1000);
+    invoke("set_playback_state", { state: buildPlaybackState() });
+  }, 500);
 }
 
-function restorePlayback() {
+/** Immediate save on song change, close, tab switch */
+function savePlaybackNow() {
+  lastSavedTime = currentTime.value;
+  clearTimeout(savePlaybackTimer);
+  if (!currentSong.value) return;
+  invoke("set_playback_state", { state: buildPlaybackState() });
+}
+
+async function restorePlayback() {
   try {
-    const raw = localStorage.getItem(PLAYBACK_KEY);
+    const raw = await invoke("get_playback_state");
     if (!raw) return;
     const state = JSON.parse(raw);
     if (state.tab) activeTab.value = state.tab;
     if (state.playlist) currentPlaylist.value = state.playlist;
+    if (state.queue?.length) playQueue.value = state.queue;
+    if (state.queueIdx != null) queueIndex.value = state.queueIdx;
+    if (state.shuffle != null) shuffle.value = state.shuffle;
     if (state.song) {
       currentSong.value = state.song;
       musicState.currentSong = state.song;
@@ -167,29 +209,51 @@ const displaySongs = computed(() => {
   return [];
 });
 
+// Pre-load saved song audio after cookie is ready
+async function resumeFromSaved() {
+  const song = currentSong.value;
+  const t = currentTime.value;
+  if (!song || !audioEl.value) return;
+  try {
+    const data = await api(`/song/url?id=${song.id}&level=standard`);
+    const url = data.data?.[0]?.url;
+    if (!url) return;
+    audioEl.value.src = url;
+    if (t > 0) {
+      const seek = () => { audioEl.value.currentTime = t; };
+      audioEl.value.addEventListener('loadedmetadata', seek, { once: true });
+    }
+  } catch (e) { /* ignore */ }
+}
+
 // Restore session and playback on mount
 (async () => {
-  restorePlayback();
+  await restorePlayback();
   const saved = await invoke("get_ncm_cookie");
   if (saved) cookie.value = saved;
-  if (!cookie.value) return;
-  try {
-    const status = await api("/login/status");
-    if (!status.data?.account) {
-      cookie.value = "";
-      invoke("set_ncm_cookie", { cookie: "" });
-      return;
-    }
-    const ud = await api("/user/account");
-    userInfo.value = ud.profile || ud.account || null;
-    if (!userInfo.value) {
-      cookie.value = "";
-      invoke("set_ncm_cookie", { cookie: "" });
-      return;
-    }
-    loadDaily();
-    loadPlaylists();
-  } catch (e) { /* ignore */ }
+  if (cookie.value) {
+    try {
+      const status = await api("/login/status");
+      if (!status.data?.account) {
+        cookie.value = "";
+        invoke("set_ncm_cookie", { cookie: "" });
+      } else {
+        const ud = await api("/user/account");
+        userInfo.value = ud.profile || ud.account || null;
+        if (!userInfo.value) {
+          cookie.value = "";
+          invoke("set_ncm_cookie", { cookie: "" });
+        }
+        loadDaily();
+        loadPlaylists();
+      }
+    } catch (e) { /* ignore */ }
+  }
+  // cookie is ready, restore playlist songs and audio
+  if (activeTab.value === "playlist" && currentPlaylist.value) {
+    openPlaylist(currentPlaylist.value);
+  }
+  resumeFromSaved();
 })();
 
 async function api(path, options = {}) {
@@ -251,8 +315,10 @@ function pollQr() {
 }
 
 onUnmounted(() => {
+  savePlaybackNow();
   clearTimeout(debounceTimer);
   clearTimeout(volumeTimer);
+  clearTimeout(queueTimer);
   clearTimeout(savePlaybackTimer);
   clearInterval(qrTimer);
   if (audioEl.value) {
@@ -384,16 +450,32 @@ async function fetchLyrics(song) {
   }
 }
 
-async function playSong(song) {
+// ── play queue ──────────────────────────
+const playQueue = ref([]);
+const queueIndex = ref(-1);
+const shuffle = ref(false);
+
+/** Click a song in a list → build static queue starting from that song */
+function playFromList(songs, startSong) {
+  const idx = songs.findIndex(s => s.id === startSong.id);
+  if (idx < 0) return;
+  playQueue.value = [...songs.slice(idx), ...songs.slice(0, idx)];
+  queueIndex.value = 0;
+  playQueueSong(playQueue.value[0]);
+}
+
+/** Play the song at queueIndex */
+async function playQueueSong(song) {
+  if (!song) return;
   try {
     const data = await api(`/song/url?id=${song.id}&level=standard`);
     const url = data.data?.[0]?.url;
     if (!url) return;
     currentSong.value = song;
     musicState.currentSong = song;
-    savePlayback();
     fetchLyrics(song);
     if (audioEl.value) { audioEl.value.src = url; audioEl.value.play(); playing.value = true; }
+    savePlaybackNow(); // persist immediately
   } catch (e) { /* ignore */ }
 }
 
@@ -405,13 +487,25 @@ function togglePlay() {
     musicState.playing = false;
   } else if (currentSong.value) {
     if (!audioEl.value.src) {
-      playSong(currentSong.value);
+      resumeCurrent();
       return;
     }
     audioEl.value.play();
     playing.value = true;
     musicState.playing = true;
   }
+}
+
+/** Resume current song without queue manipulation */
+async function resumeCurrent() {
+  const song = currentSong.value;
+  if (!song) return;
+  try {
+    const data = await api(`/song/url?id=${song.id}&level=standard`);
+    const url = data.data?.[0]?.url;
+    if (!url) return;
+    if (audioEl.value) { audioEl.value.src = url; audioEl.value.play(); playing.value = true; }
+  } catch (e) { /* ignore */ }
 }
 
 function onAudioPlay() { playing.value = true; musicState.playing = true; }
@@ -458,13 +552,27 @@ function onProgressDown() {
   seeking.value = true;
 }
 
+function randomQueueIndex(exclude) {
+  const len = playQueue.value.length;
+  if (len < 2) return 0;
+  let i;
+  do { i = Math.floor(Math.random() * len); } while (i === exclude);
+  return i;
+}
+
 function onAudioEnded() {
   playing.value = false;
   musicState.playing = false;
   lyrics.value = [];
   lastLyricIdx = 0;
   musicState.currentLyric = "";
-  playNext();
+  if (playQueue.value.length < 1) return;
+  if (shuffle.value) {
+    queueIndex.value = randomQueueIndex(queueIndex.value);
+  } else if (queueIndex.value < playQueue.value.length - 1) {
+    queueIndex.value++;
+  }
+  playQueueSong(playQueue.value[queueIndex.value]);
 }
 
 function formatTime(s) {
@@ -475,25 +583,25 @@ function formatTime(s) {
 }
 
 function playPrev() {
-  const list = displaySongs.value;
-  if (!list.length) return;
-  const idx = list.findIndex(s => s.id === currentSong.value?.id);
-  if (idx < 0) { playSong(list[0]); return; }
-  const prev = idx <= 0 ? list.length - 1 : idx - 1;
-  playSong(list[prev]);
+  const len = playQueue.value.length;
+  if (len < 2) return;
+  queueIndex.value = queueIndex.value > 0 ? queueIndex.value - 1 : len - 1;
+  playQueueSong(playQueue.value[queueIndex.value]);
 }
 
 function playNext() {
-  const list = displaySongs.value;
-  if (!list.length) return;
-  const idx = list.findIndex(s => s.id === currentSong.value?.id);
-  if (idx < 0) { playSong(list[0]); return; }
-  const next = idx >= list.length - 1 ? 0 : idx + 1;
-  playSong(list[next]);
+  const len = playQueue.value.length;
+  if (len < 2) return;
+  if (shuffle.value) {
+    queueIndex.value = randomQueueIndex(queueIndex.value);
+  } else {
+    queueIndex.value = queueIndex.value < len - 1 ? queueIndex.value + 1 : 0;
+  }
+  playQueueSong(playQueue.value[queueIndex.value]);
 }
 
-const canPrev = computed(() => displaySongs.value.length > 0);
-const canNext = computed(() => displaySongs.value.length > 0);
+const canPrev = computed(() => playQueue.value.length > 1);
+const canNext = computed(() => playQueue.value.length > 1);
 
 function onVolumeInput(e) {
   const v = Number(e.target.value);
@@ -571,7 +679,7 @@ function onVolumeInput(e) {
     <div v-if="loading && !displaySongs.length" class="loading">加载中...</div>
     <ul v-if="displaySongs.length" class="music-results">
       <li v-for="song in displaySongs" :key="song.id"
-        class="music-item" :class="{ active: currentSong?.id === song.id }" @click="playSong(song)">
+        class="music-item" :class="{ active: currentSong?.id === song.id }" @click="playFromList(displaySongs, song)">
         <div class="music-info">
           <span class="music-name">{{ song.name }}</span>
           <span class="music-artists">{{ song.artists }} · {{ song.album }}</span>
@@ -636,6 +744,40 @@ function onVolumeInput(e) {
           </div>
           <svg class="volume-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+        </div>
+        <!-- queue -->
+        <div class="queue-wrap" @mouseenter="onQueueEnter" @mouseleave="onQueueLeave">
+          <div class="queue-popup" :class="{ visible: showQueue }"
+            @mouseenter="onQueueEnter" @mouseleave="onQueueLeave">
+            <div class="queue-header">
+              <span>播放队列 · {{ playQueue.length }}首</span>
+              <button class="queue-shuffle-btn" :class="{ on: shuffle }" @click.stop="shuffle = !shuffle" title="随机播放">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 3 21 3 21 8" /><line x1="4" y1="20" x2="21" y2="3" /><polyline points="21 16 21 21 16 21" /><line x1="15" y1="15" x2="21" y2="21" /><line x1="4" y1="4" x2="9" y2="9" />
+                </svg>
+              </button>
+            </div>
+            <ul class="queue-list">
+              <li
+                v-for="s in playQueue"
+                :key="s.id"
+                class="queue-item"
+                :class="{ active: s.id === currentSong?.id }"
+                @click="jumpToQueueSong(s)"
+              >
+                <img v-if="s.cover" class="queue-cover" :src="s.cover" loading="lazy" referrerpolicy="no-referrer" />
+                <span v-else class="queue-cover-placeholder">{{ s.name[0] }}</span>
+                <div class="queue-info">
+                  <span class="queue-name">{{ s.name }}</span>
+                  <span class="queue-artists">{{ s.artists }}</span>
+                </div>
+                <span class="queue-playing" v-if="s.id === currentSong?.id">♪</span>
+              </li>
+            </ul>
+          </div>
+          <svg class="queue-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
           </svg>
         </div>
       </div>
@@ -1049,6 +1191,122 @@ function onVolumeInput(e) {
   height: 120px;
   outline: none;
   cursor: pointer;
+}
+
+/* queue popup */
+.queue-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.queue-icon {
+  width: 16px; height: 16px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.queue-popup {
+  position: absolute;
+  bottom: 36px;
+  right: 0;
+  width: 260px;
+  max-height: 280px;
+  background: rgba(28, 28, 32, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+.queue-popup.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.queue-shuffle-btn {
+  width: 28px; height: 28px;
+  border: none; border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.queue-shuffle-btn svg { width: 14px; height: 14px; }
+.queue-shuffle-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); }
+.queue-shuffle-btn.on { background: rgb(140, 94, 212); color: #fff; }
+.queue-list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+}
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.queue-item:hover { background: rgba(255, 255, 255, 0.08); }
+.queue-item.active { background: rgba(140, 94, 212, 0.3); }
+.queue-cover {
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.queue-cover-placeholder {
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.queue-info {
+  min-width: 0;
+  flex: 1;
+}
+.queue-name {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.queue-artists {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 1px;
+}
+.queue-playing {
+  font-size: 14px;
+  color: rgb(140, 94, 212);
+  flex-shrink: 0;
+}
+.queue-list::-webkit-scrollbar { width: 4px; }
+.queue-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
 }
 
 /* scrollbar */
