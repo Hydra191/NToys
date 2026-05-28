@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 
-const ITEM_H = 48;
+let ITEM_H = 32;
 let headerH = 40;
 let dividerH = 9;
 let spacerH = 8;
@@ -25,6 +25,7 @@ function measureLayout() {
   if (sp) spacerH = sp.offsetHeight;
   const item = document.querySelector('.result-item');
   if (item) {
+    ITEM_H = item.offsetHeight;
     itemGap = parseInt(getComputedStyle(item).marginBottom) || 0;
   }
 }
@@ -74,8 +75,13 @@ onMounted(async () => {
   window.addEventListener("keydown", onWindowKeydown);
   const unlistenFocus = await appWindow.onFocusChanged(({ payload: focused }) => {
     if (focused) {
-      const input = document.querySelector(".launcher-input");
-      if (input && document.activeElement !== input) input.focus();
+      (function tryFocus(n) {
+        const input = document.querySelector(".launcher-input");
+        if (input) { input.focus(); input.select(); }
+        if (document.activeElement !== input && n < 30) {
+          requestAnimationFrame(() => tryFocus(n + 1));
+        }
+      })(0);
     }
   });
   const unlistenSettings = await listen("settings-changed", () => {
@@ -164,8 +170,8 @@ function loadIcons(apps) {
 function resizeWindow(count) {
   if (count > 0) measureLayout();
   const visible = Math.min(count, MAX_VISIBLE.value);
-  const d = count > 0 ? dividerH : 0;
-  const sp = count > 0 ? spacerH : 0;
+  const d = count > 0 ? dividerH : 6;
+  const sp = count > 0 ? spacerH : 6;
   const h = headerH + d + (visible * ITEM_H) + ((visible - 1) * itemGap) + sp;
   invoke("set_launcher_size", { height: h });
 }
@@ -242,10 +248,9 @@ function onKeydown(e) {
 html, body {
   height: 100%;
   overflow: hidden;
-  height: 100%;
-  background: rgba(19, 19, 19, 0.2);
+  background: transparent;
   color: rgba(255, 255, 255, 1);
-  font-family: Arial, Helvetica,  sans-serif;
+  font-family: 'Google Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -258,7 +263,7 @@ html, body {
 
 .launcher-container {
   height: 100%;
-  background: rgba(15, 15, 15, 0.1);
+  background: transparent;
   border-radius: 6px;
   -webkit-app-region: drag;
   display: flex;
@@ -268,7 +273,7 @@ html, body {
 .search-bar {
   display: flex;
   align-items: center;
-  margin: 10px 20px;
+  margin: 16px 20px;
   flex-shrink: 0;
 }
 
@@ -315,9 +320,9 @@ html, body {
 .result-item {
   display: flex;
   align-items: center;
-  height: 32px;
+  height: 42px;
   padding: 0 12px;
-  margin-bottom: 4px;
+  margin-bottom: 14px;
   border-radius: 6px;
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;

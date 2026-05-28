@@ -585,7 +585,7 @@ function onVolumeInput(e) {
 
     <!-- Player bar -->
     <div class="player-bar">
-      <img v-if="currentSong?.cover" class="player-cover" :src="currentSong.cover" referrerpolicy="no-referrer" />
+      <img v-if="currentSong?.cover" class="player-cover" :class="{ spinning: playing }" :src="currentSong.cover" referrerpolicy="no-referrer" />
       <div v-else class="player-cover-placeholder">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
       </div>
@@ -629,6 +629,7 @@ function onVolumeInput(e) {
         <div class="volume-wrap" @mouseenter="onVolumeEnter" @mouseleave="onVolumeLeave">
           <div class="volume-popup" :class="{ visible: showVolume }"
             @mouseenter="onVolumeEnter" @mouseleave="onVolumeLeave">
+            <span class="volume-num">{{ Math.round(volume * 100) }}</span>
             <input ref="volumeSliderEl" type="range" class="volume-slider" orient="vertical"
               :value="volume" :style="{ '--vol-fill': (volume * 100) + '%' }"
               min="0" max="1" step="0.01" @input="onVolumeInput" />
@@ -697,7 +698,7 @@ function onVolumeInput(e) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  position: relative;
 }
 
 /* header */
@@ -747,8 +748,8 @@ function onVolumeInput(e) {
   display: flex;
   gap: 4px;
   margin-bottom: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
   padding: 3px;
 }
 .nav-tab {
@@ -759,7 +760,7 @@ function onVolumeInput(e) {
   gap: 6px;
   padding: 8px 0;
   border: none;
-  border-radius: 6px;
+  border-radius: 24px;
   background: transparent;
   color: rgba(255, 255, 255, 0.5);
   font-size: 13px;
@@ -814,6 +815,7 @@ function onVolumeInput(e) {
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
   align-content: start;
+  padding-bottom: 80px;
 }
 .playlist-card {
   display: flex;
@@ -864,6 +866,7 @@ function onVolumeInput(e) {
 .music-results {
   list-style: none;
   flex: 1; min-height: 0; overflow-y: auto;
+  padding-bottom: 80px;
 }
 .music-item {
   display: flex; align-items: center; justify-content: space-between;
@@ -886,24 +889,38 @@ function onVolumeInput(e) {
 
 /* player bar */
 .player-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px;
-  margin-top: auto;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  flex-shrink: 0;
+  padding: 8px 14px;
+  background: rgba(44, 44, 48);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border-radius: 36px;
+  z-index: 10;
+  will-change: transform;
 }
 .player-cover {
   width: 40px; height: 40px;
-  border-radius: 6px;
+  border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.player-cover.spinning {
+  animation: cover-spin 8s linear infinite;
+}
+
+@keyframes cover-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 .player-cover-placeholder {
   width: 40px; height: 40px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.1);
   display: flex; align-items: center; justify-content: center;
   color: rgba(255, 255, 255, 0.2);
   flex-shrink: 0;
@@ -999,17 +1016,26 @@ function onVolumeInput(e) {
   left: 50%;
   transform: translateX(-50%);
   width: 36px;
-  height: 96px;
+  height: 150px;
   background: rgba(28, 28, 32, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.volume-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 .volume-popup.visible {
   opacity: 1;
@@ -1020,7 +1046,7 @@ function onVolumeInput(e) {
   appearance: slider-vertical;
   accent-color: rgb(140, 94, 212);
   width: 4px;
-  height: 76px;
+  height: 120px;
   outline: none;
   cursor: pointer;
 }

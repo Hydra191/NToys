@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'Product Sans';
-  src: url('./src/assets/ProductSans-Regular.ttf') format('truetype');
+  src: url('../assets/ProductSans-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -8,7 +8,7 @@
 
 @font-face {
   font-family: 'Product Sans Bold';
-  src: url('./src/assets/ProductSans-Bold.ttf') format('truetype');
+  src: url('../assets/ProductSans-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -16,7 +16,7 @@
 
 @font-face {
   font-family: 'Google Sans';
-  src: url('./src/assets/GoogleSans-Regular.ttf') format('truetype');
+  src: url('../assets/GoogleSans-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -24,7 +24,7 @@
 
 @font-face {
   font-family: 'Google Sans Bold';
-  src: url('./src/assets/GoogleSans-Bold.ttf') format('truetype');
+  src: url('../assets/GoogleSans-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;

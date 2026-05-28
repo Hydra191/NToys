@@ -98,7 +98,7 @@ function onKeyCapture(e) {
 }
 
 .shortcut-input {
-  padding: 8px 12px;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.08);
   border: 2px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;

@@ -105,16 +105,16 @@ const plugins = [
 
 <style>
 .sidebar {
-  width: 56px;
+  width: 48px;
   font-family: 'Google Sans Bold';
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 12px 8px;
+  padding: 2px 8px;
   background: rgba(138, 138, 138, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 10px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
+  border-radius: 24px;
   transition: width 0.25s ease-in-out;
   overflow: hidden;
   position: relative;
@@ -128,7 +128,7 @@ const plugins = [
   position: absolute;
   left: 8px;
   right: 8px;
-  border-radius: 8px;
+  border-radius: 18px;
   background: rgb(140, 94, 212);
   transition: top 0.15s ease-out, height 0.15s ease-out;
   z-index: 0;
@@ -139,18 +139,18 @@ const plugins = [
   display: flex;
   align-items: stretch;
   flex-direction: column;
+  padding: 0 6px;
   gap: 6px;
   position: relative;
   z-index: 1;
 }
 
 .plugin-item {
-  height: 40px;
-  border-radius: 8px;
+  height: 36px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
-  padding: 0 10px;
-  gap: 10px;
+  gap: 5px;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.45);
   background: transparent;
@@ -159,11 +159,12 @@ const plugins = [
   overflow: hidden;
   position: relative;
   z-index: 1;
+  margin-bottom: 8px;
 }
 
 .plugin-item svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -176,8 +177,7 @@ const plugins = [
 }
 
 .plugin-label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
   opacity: 0;
   transition: opacity 0.15s ease;
   overflow: hidden;
@@ -193,6 +193,7 @@ const plugins = [
   align-items: stretch;
   flex-direction: column;
   position: relative;
+  padding: 0 6px;
   z-index: 1;
 }
 </style>

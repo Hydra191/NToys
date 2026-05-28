@@ -11,7 +11,7 @@ use crate::runner::icon;
 use crate::runner::settings::{self, SettingsState};
 use pinyin::ToPinyin;
 
-const LAUNCHER_W: f64 = 500.0;
+const LAUNCHER_W: f64 = 560.0;
 const LAUNCHER_H: f64 = 50.0;
 
 static PREVENT_HIDE: AtomicBool = AtomicBool::new(false);
@@ -206,9 +206,8 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
     .visible(false)
     .build()
     .expect("failed to create launcher window");
-
     let config: WindowEffectsConfig = serde_json::from_value(serde_json::json!({
-        "effects": ["acrylic"],
+        "effects": ["mica"],
     })).unwrap();
     let _ = launcher.set_effects(config);
 

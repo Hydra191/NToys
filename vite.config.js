@@ -30,6 +30,7 @@ export default defineConfig(async () => ({
     },
   },
 
+  base: './',
   build: {
     rollupOptions: {
       input: {
