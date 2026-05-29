@@ -6,12 +6,25 @@ import UpdateCheck from "../settings/components/UpdateCheck.vue";
 defineEmits(["close"]);
 
 const version = ref("");
+const debugMsg = ref("");
 
 onMounted(async () => {
   try {
     version.value = await invoke("get_app_version");
   } catch (e) { /* ignore */ }
 });
+
+async function onDebugCheck() {
+  try {
+    const { check } = await import("@tauri-apps/plugin-updater");
+    const u = await check();
+    debugMsg.value = u
+      ? `found: v${u.version}`
+      : "no update found";
+  } catch (e) {
+    debugMsg.value = `err: ${e}`;
+  }
+}
 </script>
 
 <template>
@@ -24,6 +37,8 @@ onMounted(async () => {
       <h1 class="about-title">Luna Toys</h1>
       <p class="about-version" v-if="version">v{{ version }}</p>
       <UpdateCheck />
+      <button class="debug-btn" @click="onDebugCheck">debug: check()</button>
+      <p class="debug-msg" v-if="debugMsg">{{ debugMsg }}</p>
       <button class="about-close-btn" @click="$emit('close')">关闭</button>
     </div>
   </div>
@@ -69,4 +84,19 @@ onMounted(async () => {
   font-size: 13px; cursor: pointer;
 }
 .about-close-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.debug-btn {
+  margin-top: 8px;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  cursor: pointer;
+}
+.debug-msg {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #fbbf24;
+}
 </style>
