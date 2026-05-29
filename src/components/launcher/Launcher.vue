@@ -60,8 +60,8 @@ function onWindowKeydown(e) {
 async function loadSettings() {
   try {
     const s = await invoke("get_settings");
-    MAX_VISIBLE.value = s.max_visible;
-    preventHideOnText.value = s.prevent_hide_on_text ?? true;
+    MAX_VISIBLE.value = s.runner.max_visible;
+    preventHideOnText.value = s.runner.prevent_hide_on_text ?? true;
   } catch (e) {
     console.error("Failed to load settings:", e);
   }

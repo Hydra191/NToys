@@ -16,7 +16,8 @@ watch(
   () => props.modelValue,
   (v) => {
     display.value = v;
-  }
+  },
+  { immediate: true }
 );
 
 function syncWidth() {

@@ -1,4 +1,5 @@
 mod runner;
+mod settings;
 mod vpn;
 use std::fs;
 use std::sync::Mutex;
@@ -8,7 +9,7 @@ use tauri::tray::TrayIconBuilder;
 use std::time::Instant;
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Networks, Pid, ProcessesToUpdate, System};
 use runner::launcher::{AppState, setup_launcher};
-use runner::settings::{SettingsState, load_settings, register_show_window_shortcut};
+use settings::settings::{SettingsState, load_settings, register_show_window_shortcut};
 
 #[tauri::command]
 fn exit_app(app_handle: tauri::AppHandle) {
@@ -154,8 +155,8 @@ pub fn run() {
         })
         .setup(|app| {
             let settings = load_settings(app.handle());
-            let shortcut = settings.shortcut.clone();
-            let show_shortcut = settings.show_window_shortcut.clone();
+            let shortcut = settings.runner["shortcut"].as_str().unwrap_or("Alt+Space").to_string();
+            let show_shortcut = settings.global["show_window_shortcut"].as_str().unwrap_or("Alt+Shift+N").to_string();
             app.manage(SettingsState {
                 settings: std::sync::Mutex::new(settings),
             });
@@ -237,12 +238,8 @@ pub fn run() {
             runner::launcher::hide_launcher,
             runner::launcher::set_prevent_hide,
             runner::launcher::set_launcher_size,
-            runner::launcher::update_settings,
-            runner::settings::get_settings,
-            runner::settings::get_max_visible,
-            runner::settings::set_autostart,
-            runner::settings::get_autostart,
-            runner::settings::set_show_window_shortcut,
+            settings::settings::get_settings,
+            settings::settings::update_settings_section,
             get_ncm_cookie,
             set_ncm_cookie,
             get_playback_state,

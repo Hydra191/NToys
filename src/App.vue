@@ -3,11 +3,10 @@ import { ref, computed, watch, onMounted, onUnmounted, provide } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Sidebar from "./components/Sidebar.vue";
-import RunnerSettings from "./components/view/RunnerSettings.vue";
 import MusicView from "./components/view/MusicView.vue";
 import VpnView from "./components/view/VpnView.vue";
 import HomeView from "./components/view/HomeView.vue";
-import GlobalSettings from "./components/view/GlobalSettings.vue";
+import GlobalSettings from "./components/settings/SettingsController.vue";
 import { musicState } from "./scripts/music.js";
 import { useRafIdle } from "./scripts/useRafIdle.js";
 import { startWeather, stopWeather } from "./scripts/weather.js";
@@ -124,11 +123,9 @@ async function close() {
 
       <div class="main-content" :class="{ 'content-switch': animating }">
         <HomeView v-if="activePlugin === 'home'" />
-        <RunnerSettings v-if="activePlugin === 'runner'" />
         <MusicView v-show="activePlugin === 'music'" />
         <VpnView v-if="activePlugin === 'vpn'" />
         <GlobalSettings v-if="activePlugin === 'settings'" />
-        <TestBlurView v-if="activePlugin === 'blur'" />
       </div>
 
     </div>

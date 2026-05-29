@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 
 const props = defineProps({
   modelValue: Number,
@@ -29,8 +29,15 @@ watch(
     if (sliderEl.value) {
       sliderEl.value.style.setProperty("--fill", pct(v) + "%");
     }
-  }
+  },
+  { immediate: true }
 );
+
+onMounted(() => {
+  if (sliderEl.value) {
+    sliderEl.value.style.setProperty("--fill", pct(props.modelValue) + "%");
+  }
+});
 </script>
 
 <template>

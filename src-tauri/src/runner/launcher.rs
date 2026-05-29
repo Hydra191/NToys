@@ -8,7 +8,6 @@ use tauri::utils::config::WindowEffectsConfig;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use crate::runner::icon;
-use crate::runner::settings::{self, SettingsState};
 use pinyin::ToPinyin;
 
 const LAUNCHER_W: f64 = 560.0;
@@ -293,24 +292,3 @@ pub fn register_shortcut(app_handle: &tauri::AppHandle, shortcut: &str) {
     }
 }
 
-#[tauri::command]
-pub fn update_settings(
-    app_handle: tauri::AppHandle,
-    settings_state: tauri::State<SettingsState>,
-    shortcut: String,
-    max_visible: usize,
-    prevent_hide_on_text: bool,
-) -> Result<settings::Settings, String> {
-    let mut s = settings_state.settings.lock().map_err(|e| e.to_string())?;
-    let old = s.shortcut.clone();
-    s.shortcut = shortcut.clone();
-    s.max_visible = max_visible;
-    s.prevent_hide_on_text = prevent_hide_on_text;
-    settings::save_settings(&app_handle, &s);
-    if shortcut != old {
-        app_handle.global_shortcut().unregister(old.as_str()).ok();
-        register_shortcut(&app_handle, &shortcut);
-    }
-    let _ = app_handle.emit("settings-changed", &*s);
-    Ok(s.clone())
-}
