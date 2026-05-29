@@ -250,7 +250,7 @@ html, body {
   overflow: hidden;
   background: transparent;
   color: rgba(255, 255, 255, 1);
-  font-family: 'Google Sans', sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

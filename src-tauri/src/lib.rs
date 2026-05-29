@@ -5,7 +5,8 @@ use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
-use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Pid, ProcessesToUpdate, System};
+use std::time::Instant;
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Networks, Pid, ProcessesToUpdate, System};
 use runner::launcher::{AppState, setup_launcher};
 use runner::settings::{SettingsState, load_settings, register_show_window_shortcut};
 
@@ -74,6 +75,15 @@ struct SystemStats {
     memory_total: u64,
     memory_used: u64,
     self_memory_mb: f64,
+    download_speed: f64,
+    upload_speed: f64,
+}
+
+struct NetState {
+    networks: Networks,
+    prev_rx: u64,
+    prev_tx: u64,
+    prev_time: Instant,
 }
 
 #[tauri::command]
@@ -95,16 +105,40 @@ fn get_system_stats(sys_state: tauri::State<SystemState>) -> SystemStats {
         .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
         .unwrap_or(0.0);
 
+    // ── network speed ──
+    let (dl, ul) = {
+        let mut net = sys_state.net.lock().unwrap();
+        net.networks.refresh(true);
+        let now = Instant::now();
+        let total_rx: u64 = net.networks.iter().map(|(_, d)| d.received()).sum();
+        let total_tx: u64 = net.networks.iter().map(|(_, d)| d.transmitted()).sum();
+        let dt = (now - net.prev_time).as_secs_f64();
+        let (dl, ul) = if dt > 0.0 && net.prev_rx > 0 {
+            let rx_diff = total_rx.saturating_sub(net.prev_rx) as f64;
+            let tx_diff = total_tx.saturating_sub(net.prev_tx) as f64;
+            (rx_diff / dt, tx_diff / dt)
+        } else {
+            (0.0, 0.0)
+        };
+        net.prev_rx = total_rx;
+        net.prev_tx = total_tx;
+        net.prev_time = now;
+        (dl, ul)
+    };
+
     SystemStats {
         cpu: (cpu as f64).round(),
         memory_total: sys.total_memory(),
         memory_used: sys.used_memory(),
         self_memory_mb: (self_memory_mb * 10.0).round() / 10.0,
+        download_speed: (dl * 10.0).round() / 10.0,
+        upload_speed: (ul * 10.0).round() / 10.0,
     }
 }
 
 struct SystemState {
     sys: Mutex<System>,
+    net: Mutex<NetState>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -114,6 +148,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             apps: std::sync::Mutex::new(apps),
         })
@@ -129,6 +164,12 @@ pub fn run() {
             let vpn_data = vpn::load_vpn_data(app.handle());
             app.manage(SystemState {
                 sys: Mutex::new(System::new_all()),
+                net: Mutex::new(NetState {
+                    networks: Networks::new_with_refreshed_list(),
+                    prev_rx: 0,
+                    prev_tx: 0,
+                    prev_time: Instant::now(),
+                }),
             });
 
             app.manage(vpn::VpnState {

@@ -8,10 +8,15 @@ import MusicView from "./components/view/MusicView.vue";
 import VpnView from "./components/view/VpnView.vue";
 import HomeView from "./components/view/HomeView.vue";
 import GlobalSettings from "./components/view/GlobalSettings.vue";
-import { musicState } from "./stores/music.js";
+import { musicState } from "./scripts/music.js";
+import { useRafIdle } from "./scripts/useRafIdle.js";
+import { startWeather, stopWeather } from "./scripts/weather.js";
+import { checkForUpdate } from "./scripts/updater.js";
 const activePlugin = ref("home");
 const titleIconColor = ref("#A78BFA");
-const windowVisible = ref(true);
+const tauriVisible = ref(true);
+const { isIdle: rafIdle } = useRafIdle();
+const windowVisible = computed(() => tauriVisible.value && !rafIdle.value);
 const animating = ref(false);
 
 watch(activePlugin, () => {
@@ -48,18 +53,22 @@ function startTitleAnimation() {
 const animatedTitle = computed(() => fullTitle.slice(0, titleIndex.value + 1) || '\xa0');
 
 onMounted(async () => {
+  startWeather();
   startTitleAnimation();
+  // Check for updates after UI settles (3s delay)
+  setTimeout(() => checkForUpdate(), 3000);
   const unlistenShown = await listen("main-window-shown", () => {
-    windowVisible.value = true;
+    tauriVisible.value = true;
   });
   const unlistenHidden = await listen("main-window-hidden", () => {
-    windowVisible.value = false;
+    tauriVisible.value = false;
   });
   window._winShownUnlisten = unlistenShown;
   window._winHiddenUnlisten = unlistenHidden;
 });
 
 onUnmounted(() => {
+  stopWeather();
   clearInterval(titleTimer);
   window._winShownUnlisten?.();
   window._winHiddenUnlisten?.();

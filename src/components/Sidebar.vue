@@ -131,6 +131,7 @@ const plugins = [
   border-radius: 18px;
   background: rgb(140, 94, 212);
   transition: top 0.15s ease-out, height 0.15s ease-out;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
   z-index: 0;
 }
 

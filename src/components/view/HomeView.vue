@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted, inject } from "vue";
+import { ref, onMounted, onUnmounted, inject, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { weatherState, weatherIcon } from "../../scripts/weather.js";
 
 const windowVisible = inject("windowVisible");
-const stats = ref({ cpu: 0, memory_total: 0, memory_used: 0, self_memory_mb: 0 });
+const stats = ref({ cpu: 0, memory_total: 0, memory_used: 0, self_memory_mb: 0, download_speed: 0, upload_speed: 0 });
 let timer = null;
 
 async function refresh() {
@@ -28,41 +29,16 @@ const dateStr = () => {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${days[d.getDay()]}`;
 };
 
-// ── weather ─────────────────────────────
-const weather = ref(null);
-const city = ref("");
-
-async function loadWeather() {
-  try {
-    const ipRes = await fetch("http://ip-api.com/json/?lang=zh-CN&fields=city,lat,lon");
-    const ipData = await ipRes.json();
-    city.value = ipData.city || "";
-
-    const wRes = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${ipData.lat}&longitude=${ipData.lon}&current_weather=true&timezone=auto`
-    );
-    const wData = await wRes.json();
-    weather.value = wData.current_weather;
-  } catch (e) { /* ignore */ }
-}
-
-function weatherIcon(code) {
-  if (code <= 1) return "☀";       // clear
-  if (code <= 3) return "⛅";       // partly cloudy
-  if (code <= 48) return "☁";      // cloudy/fog
-  if (code <= 57) return "🌧"; // drizzle
-  if (code <= 67) return "🌧"; // rain
-  if (code <= 77) return "❄";      // snow
-  if (code <= 82) return "🌪"; // rain showers
-  return "🌩";                 // thunderstorm
-}
+// ── weather (shared state, refreshed every 30min at app level) ──
+const weather = computed(() => weatherState.current);
+const forecast = computed(() => weatherState.forecast);
+const city = computed(() => weatherState.city);
 
 onMounted(() => {
   refresh();
   timer = setInterval(refresh, 2000);
   now.value = new Date();
   timeTimer = setInterval(() => { if (windowVisible.value) now.value = new Date(); }, 1000);
-  loadWeather();
 });
 
 onUnmounted(() => {
@@ -82,6 +58,21 @@ function memUsedGB() {
 function memTotalGB() {
   return (stats.value.memory_total / 1024 / 1024 / 1024).toFixed(1);
 }
+
+function formatSpeed(bytesPerSec) {
+  if (!bytesPerSec || bytesPerSec < 0) return "0 B/s";
+  if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} B/s`;
+  if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+  return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
+}
+
+const MAX_NET_SPEED = 5 * 1024 * 1024; // 5 MB/s reference for bar width
+function netDlPercent() {
+  return Math.min((stats.value.download_speed / MAX_NET_SPEED) * 100, 100);
+}
+function netUlPercent() {
+  return Math.min((stats.value.upload_speed / MAX_NET_SPEED) * 100, 100);
+}
 </script>
 
 <template>
@@ -97,6 +88,15 @@ function memTotalGB() {
           <span class="weather-temp">{{ weather.temperature }}°C</span>
           <span class="weather-city">{{ city }}</span>
         </div>
+      </div>
+    </div>
+
+    <!-- forecast row -->
+    <div class="forecast-row" v-if="forecast.length">
+      <div v-for="day in forecast" :key="day.date" class="forecast-card">
+        <span class="forecast-day">{{ day.dayName }}</span>
+        <span class="forecast-icon">{{ weatherIcon(day.code) }}</span>
+        <span class="forecast-temps">{{ day.max }}° / {{ day.min }}°</span>
       </div>
     </div>
 
@@ -128,6 +128,22 @@ function memTotalGB() {
         </div>
         <div class="progress-track">
           <div class="progress-fill self-fill" :style="{ width: Math.min(stats.self_memory_mb, 100) + '%' }" />
+        </div>
+      </div>
+
+      <div class="stat-card net-card">
+        <div class="stat-header net-header">
+          <span class="stat-label">网络</span>
+          <div class="net-speeds">
+            <span class="net-label">↓</span>
+            <span class="stat-value net-val">{{ formatSpeed(stats.download_speed) }}</span>
+            <span class="net-label">↑</span>
+            <span class="stat-value net-val">{{ formatSpeed(stats.upload_speed) }}</span>
+          </div>
+        </div>
+        <div class="net-indicator-row">
+          <div class="net-bar dl-bar" :style="{ width: netDlPercent() + '%' }" />
+          <div class="net-bar ul-bar" :style="{ width: netUlPercent() + '%' }" />
         </div>
       </div>
     </div>
@@ -257,4 +273,76 @@ function memTotalGB() {
 .cpu-fill { background: #60a5fa; }
 .mem-fill { background: #34d399; }
 .self-fill { background: #a78bfa; }
+
+/* ── forecast row ── */
+.forecast-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.forecast-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.forecast-day {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.forecast-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.forecast-temps {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+
+/* ── network card ── */
+.net-card .net-header {
+  flex-wrap: wrap;
+}
+
+.net-speeds {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.net-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.net-val {
+  min-width: 55px;
+}
+
+.net-indicator-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.net-bar {
+  height: 3px;
+  border-radius: 2px;
+  flex: 1;
+  min-width: 0;
+  transition: width 1.2s ease;
+}
+
+.dl-bar { background: #38bdf8; }
+.ul-bar { background: #fb923c; }
 </style>
