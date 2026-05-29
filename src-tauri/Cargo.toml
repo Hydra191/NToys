@@ -1,12 +1,12 @@
 [package]
-name = "ntoys"
+name = "luna-toys"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "ntoys_lib"
+name = "luna_toys_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

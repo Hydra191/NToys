@@ -123,7 +123,7 @@ function netUlPercent() {
 
       <div class="stat-card">
         <div class="stat-header">
-          <span class="stat-label">NToys</span>
+          <span class="stat-label">Luna Toys</span>
           <span class="stat-value">{{ stats.self_memory_mb }} MB</span>
         </div>
         <div class="progress-track">

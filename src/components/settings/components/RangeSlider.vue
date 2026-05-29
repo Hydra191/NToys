@@ -32,7 +32,6 @@ watch(
   },
   { immediate: true }
 );
-
 onMounted(() => {
   if (sliderEl.value) {
     sliderEl.value.style.setProperty("--fill", pct(props.modelValue) + "%");
@@ -71,7 +70,7 @@ onMounted(() => {
 }
 
 .slider-group {
-  margin-bottom: 20px;
+  margin-bottom: 0px;
 }
 
 .slider-row {
@@ -81,9 +80,9 @@ onMounted(() => {
 }
 
 .slider-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255,0.8);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -142,12 +141,12 @@ onMounted(() => {
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #fff;
-  border: none;
-  margin-top: -2px;
+  background: rgb(140, 94, 212);
+  border: 2px solid rgba(255, 255, 255);
+  margin-top: -3px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   transition: transform 0.15s, box-shadow 0.15s;
 }

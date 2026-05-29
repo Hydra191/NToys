@@ -90,9 +90,9 @@ pub fn update_settings_section(
                 .open_subkey_with_flags(r"Software\Microsoft\Windows\CurrentVersion\Run", winreg::enums::KEY_SET_VALUE)
                 .map_err(|e| format!("open registry: {}", e))?;
             if autostart {
-                run_key.set_value("NToys", &exe_str).map_err(|e| format!("set autostart: {}", e))?;
+                run_key.set_value("Luna Toys", &exe_str).map_err(|e| format!("set autostart: {}", e))?;
             } else {
-                run_key.delete_value("NToys").map_err(|e| format!("delete autostart: {}", e))?;
+                run_key.delete_value("Luna Toys").map_err(|e| format!("delete autostart: {}", e))?;
             }
 
             // show-window shortcut

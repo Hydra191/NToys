@@ -120,8 +120,8 @@ const plugins = [
 
 .indicator {
   position: absolute;
-  left: 8px;
-  right: 8px;
+  left: 5px;
+  right: 5px;
   border-radius: 18px;
   background: rgb(140, 94, 212);
   transition: top 0.15s ease-out, height 0.15s ease-out;
@@ -172,7 +172,7 @@ const plugins = [
 }
 
 .plugin-label {
-  font-size: 15px;
+  font-size: 13px;
   opacity: 0;
   transition: opacity 0.15s ease;
   overflow: hidden;

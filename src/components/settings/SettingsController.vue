@@ -1,27 +1,7 @@
 <script setup>
-import { ref, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import SettingView from "../view/SettingView.vue";
-import UpdateCheck from "./components/UpdateCheck.vue";
 import { settingsSections, settingsState, keyToSection } from "./settingsRegistry.js";
-
-const loading = ref(true);
-
-onMounted(async () => {
-  try {
-    const s = await invoke("get_settings");
-    for (const sec of settingsSections) {
-      const data = s[sec.section];
-      if (!data) continue;
-      for (const item of sec.items) {
-        if (data[item.key] !== undefined) {
-          settingsState[item.key] = data[item.key];
-        }
-      }
-    }
-  } catch (e) { /* ignore */ }
-  loading.value = false;
-});
 
 async function onChange(key, val) {
   settingsState[key] = val;
@@ -49,10 +29,8 @@ async function onChange(key, val) {
 </script>
 
 <template>
-  <div class="global-settings-panel" v-if="!loading">
+  <div class="global-settings-panel">
     <SettingView :sections="settingsSections" :models="settingsState" @change="onChange" />
-    <div class="section-header">更新</div>
-    <UpdateCheck />
   </div>
 </template>
 

@@ -28,9 +28,9 @@ defineEmits(["update:modelValue"]);
 }
 
 .toggle-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
 }
 

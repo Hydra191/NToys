@@ -6,5 +6,5 @@ fn main() {
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
         "--ignore-gpu-blocklist --enable-gpu-rasterization",
     );
-    ntoys_lib::run()
+    luna_toys_lib::run()
 }

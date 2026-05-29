@@ -12,6 +12,11 @@ use runner::launcher::{AppState, setup_launcher};
 use settings::settings::{SettingsState, load_settings, register_show_window_shortcut};
 
 #[tauri::command]
+fn get_app_version(app_handle: tauri::AppHandle) -> String {
+    app_handle.package_info().version.to_string()
+}
+
+#[tauri::command]
 fn exit_app(app_handle: tauri::AppHandle) {
     app_handle.exit(0);
 }
@@ -198,7 +203,7 @@ pub fn run() {
 
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().cloned().unwrap())
-                .tooltip("NToys")
+                .tooltip("Luna Toys")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => {
@@ -240,6 +245,7 @@ pub fn run() {
             runner::launcher::set_launcher_size,
             settings::settings::get_settings,
             settings::settings::update_settings_section,
+            get_app_version,
             get_ncm_cookie,
             set_ncm_cookie,
             get_playback_state,

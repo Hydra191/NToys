@@ -91,9 +91,9 @@ function onKeyCapture(e) {
 }
 
 .shortcut-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
   flex-shrink: 0;
 }

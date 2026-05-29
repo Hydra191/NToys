@@ -105,7 +105,7 @@ onUnmounted(() => {
 const query = ref("");
 const results = ref([]);
 const selectedIndex = ref(-1);
-const MAX_ICON_CACHE = 200;
+const MAX_ICON_CACHE = 50;
 const iconCache = new Map();
 
 let debounceTimer = null;

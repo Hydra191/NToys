@@ -20,9 +20,10 @@ function onChange(key, val) {
     <template v-for="section in sections" :key="section.name">
       <div class="section-header">{{ section.name }}</div>
       <div
-        v-for="item in section.items"
+        v-for="(item, i) in section.items"
         :key="item.key"
         class="settings-item"
+        :class="{ 'last-in-section': i === section.items.length - 1 }"
       >
         <ShortcutInput
           v-if="item.type === 'shortcut'"
@@ -60,19 +61,31 @@ function onChange(key, val) {
 }
 
 .section-header {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgb(183, 110, 226);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding-top: 16px;
+  padding: 12px 0 0 6px;
   margin-bottom: 4px;
 }
 .section-header:first-child { padding-top: 0; }
 
 .settings-item {
-  padding: 12px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  height: 80px;
+  padding: 0 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.last-in-section {
+  border-bottom: none;
+}
+
+.settings-item > * {
+  width: 100%;
 }
 
 .unknown-type {

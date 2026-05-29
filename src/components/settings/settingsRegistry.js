@@ -32,6 +32,15 @@ export const settingsSections = [
       { type: "toggle", key: "prevent_hide_on_text", label: "输入框有内容时保持窗口", default: true },
     ],
   },
+
+  {
+    name: "外观",
+    section: "design",
+    items: [
+      { type: "slider", key: "bga", label: "背景不透明度", default: 0, min: 0, max: 100, step: 1 },
+    ],
+  },
+
   {
     name: "系统",
     section: "global",
@@ -69,3 +78,18 @@ function buildDefaults() {
 
 /** Shared reactive state — import anywhere to read/write setting values. */
 export const settingsState = reactive(buildDefaults());
+
+/** Load all settings from backend into settingsState. Call once at app startup. */
+export async function loadSettings() {
+  const { invoke } = await import("@tauri-apps/api/core");
+  const s = await invoke("get_settings");
+  for (const sec of settingsSections) {
+    const data = s[sec.section];
+    if (!data) continue;
+    for (const item of sec.items) {
+      if (data[item.key] !== undefined) {
+        settingsState[item.key] = data[item.key];
+      }
+    }
+  }
+}

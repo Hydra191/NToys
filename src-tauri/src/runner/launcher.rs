@@ -41,13 +41,6 @@ fn launcher_position(app_handle: &tauri::AppHandle) -> PhysicalPosition<f64> {
     }
 }
 
-fn offscreen_y(app_handle: &tauri::AppHandle) -> f64 {
-    if let Ok(Some(monitor)) = app_handle.primary_monitor() {
-        monitor.size().height as f64 + 100.0
-    } else {
-        10000.0
-    }
-}
 
 fn make_pinyin(name: &str) -> (String, String) {
     let mut full = String::new();
@@ -162,16 +155,14 @@ pub fn launch_app(app_handle: tauri::AppHandle, path: String) {
         .args(["/c", "start", "", &path])
         .spawn();
     if let Some(launcher) = app_handle.get_webview_window("launcher") {
-        let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
-        let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(&app_handle)));
+        let _ = launcher.close();
     }
 }
 
 #[tauri::command]
 pub fn hide_launcher(app_handle: tauri::AppHandle) {
     if let Some(launcher) = app_handle.get_webview_window("launcher") {
-        let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
-        let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(&app_handle)));
+        let _ = launcher.close();
     }
 }
 
@@ -187,11 +178,14 @@ pub fn set_launcher_size(app_handle: tauri::AppHandle, height: f64) {
     }
 }
 
-pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let off_y = offscreen_y(app.handle());
+fn build_launcher(app_handle: &tauri::AppHandle) {
+    let pos = launcher_position(app_handle);
+    let config: WindowEffectsConfig =
+        serde_json::from_value(serde_json::json!({ "effects": ["mica"] })).unwrap();
+    let h = app_handle.clone();
 
     let launcher = WebviewWindowBuilder::new(
-        app,
+        app_handle,
         "launcher",
         WebviewUrl::App("/launcher.html".into()),
     )
@@ -200,17 +194,13 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
     .skip_taskbar(true)
     .resizable(false)
     .transparent(true)
-    .position(0.0, off_y)
+    .position(pos.x, pos.y)
     .inner_size(LAUNCHER_W, LAUNCHER_H)
     .visible(false)
     .build()
     .expect("failed to create launcher window");
-    let config: WindowEffectsConfig = serde_json::from_value(serde_json::json!({
-        "effects": ["mica"],
-    })).unwrap();
     let _ = launcher.set_effects(config);
 
-    let app_handle = app.handle().clone();
     launcher.on_window_event(move |event| {
         use tauri::WindowEvent;
         match event {
@@ -220,16 +210,15 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
                 }
                 FOCUS_GEN.fetch_add(1, Ordering::Relaxed);
                 let gen = FOCUS_GEN.load(Ordering::Relaxed);
-                let h = app_handle.clone();
+                let h2 = h.clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_millis(50));
                     if FOCUS_GEN.load(Ordering::Relaxed) != gen {
-                        return; // focus changed again, cancel
+                        return;
                     }
-                    if let Some(win) = h.get_webview_window("launcher") {
-                        let _ = h.emit("launcher-hidden", ());
-                        let _ = win.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
-                        let _ = win.set_position(PhysicalPosition::new(0.0, offscreen_y(&h)));
+                    if let Some(win) = h2.get_webview_window("launcher") {
+                        let _ = h2.emit("launcher-hidden", ());
+                        let _ = win.close();
                     }
                 });
             }
@@ -240,34 +229,24 @@ pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dy
         }
     });
 
-    register_shortcut(app.handle(), shortcut);
-    Ok(())
+    let _ = launcher.show();
+    let _ = launcher.set_focus();
 }
 
 fn toggle_launcher(app_handle: &tauri::AppHandle) {
-    if let Some(launcher) = app_handle.get_webview_window("launcher") {
-        let screen_h = app_handle
-            .primary_monitor()
-            .ok()
-            .flatten()
-            .map(|m| m.size().height as f64)
-            .unwrap_or(1080.0);
-        let is_offscreen = launcher
-            .outer_position()
-            .map(|p| (p.y as f64) >= screen_h - LAUNCHER_H)
-            .unwrap_or(false);
-        if is_offscreen {
-            let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
-            let _ = launcher.set_position(launcher_position(app_handle));
-            let _ = launcher.show();
-            let _ = launcher.set_focus();
-            let _ = launcher.eval("window.dispatchEvent(new Event('resize'));");
-        } else {
-            let _ = app_handle.emit("launcher-hidden", ());
-            let _ = launcher.set_size(tauri::Size::Logical(LogicalSize::new(LAUNCHER_W, LAUNCHER_H)));
-            let _ = launcher.set_position(PhysicalPosition::new(0.0, offscreen_y(app_handle)));
+    if app_handle.get_webview_window("launcher").is_some() {
+        let _ = app_handle.emit("launcher-hidden", ());
+        if let Some(win) = app_handle.get_webview_window("launcher") {
+            let _ = win.close();
         }
+    } else {
+        build_launcher(app_handle);
     }
+}
+
+pub fn setup_launcher(app: &mut tauri::App, shortcut: &str) -> Result<(), Box<dyn std::error::Error>> {
+    register_shortcut(app.handle(), shortcut);
+    Ok(())
 }
 
 pub fn register_shortcut(app_handle: &tauri::AppHandle, shortcut: &str) {

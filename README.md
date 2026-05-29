@@ -1,4 +1,4 @@
-# NToys
+# Luna Toys
 一个简单的工具箱，带有Runner和VPN以及音乐播放（网易云）
 
 

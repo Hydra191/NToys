@@ -6,12 +6,15 @@ import Sidebar from "./components/Sidebar.vue";
 import MusicView from "./components/view/MusicView.vue";
 import VpnView from "./components/view/VpnView.vue";
 import HomeView from "./components/view/HomeView.vue";
+import AboutModal from "./components/view/AboutModal.vue";
 import GlobalSettings from "./components/settings/SettingsController.vue";
 import { musicState } from "./scripts/music.js";
 import { useRafIdle } from "./scripts/useRafIdle.js";
 import { startWeather, stopWeather } from "./scripts/weather.js";
 import { checkForUpdate } from "./scripts/updater.js";
+import { settingsState, loadSettings } from "./components/settings/settingsRegistry.js";
 const activePlugin = ref("home");
+const showAbout = ref(false);
 const titleIconColor = ref("#A78BFA");
 const tauriVisible = ref(true);
 const { isIdle: rafIdle } = useRafIdle();
@@ -24,6 +27,10 @@ watch(activePlugin, () => {
     animating.value = true;
   });
 });
+watch(() => settingsState.bga, (v) => {
+  document.documentElement.style.setProperty("--bga", v);
+}, { immediate: true });
+
 provide("windowVisible", windowVisible);
 
 // ── animated title ──
@@ -52,6 +59,7 @@ function startTitleAnimation() {
 const animatedTitle = computed(() => fullTitle.slice(0, titleIndex.value + 1) || '\xa0');
 
 onMounted(async () => {
+  loadSettings();
   startWeather();
   startTitleAnimation();
   // Check for updates after UI settles (3s delay)
@@ -91,7 +99,7 @@ async function close() {
 
       <div class="titlebar">
 
-        <div class="titlebar-title">
+        <div class="titlebar-title" @click.stop="showAbout = true">
 
           <svg viewBox="0 0 16 16" :fill="titleIconColor" class="titlebar-icon" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 0.278a0.77 0.77 0 0 1 0.08 0.858 7.2 7.2 0 0 0-0.878 3.46c0 4.021 3.278 7.277 7.318 7.277q0.792-1e-3 1.533-0.16a0.79 0.79 0 0 1 0.81 0.316 0.73 0.73 0 0 1-0.031 0.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124 0.06A0.75 0.75 0 0 1 6 0.278" />
@@ -131,6 +139,7 @@ async function close() {
     </div>
 
   </div>
+  <AboutModal v-if="showAbout" @close="showAbout = false" />
 </template>
 
 <style>
@@ -143,6 +152,7 @@ async function close() {
 html, body {
   height: 100%;
   overflow: hidden;
+  background: rgba(0,0,0, calc(var(--bga) / 100));
   color: rgba(255, 255, 255, 1);
   font-family: 'Google Sans', sans-serif;
   font-size: 14px;
@@ -189,6 +199,8 @@ html, body {
   margin: 6px;
   display: flex;
   align-items: center;
+  -webkit-app-region: no-drag;
+  cursor: pointer;
 }
 .titlebar-icon {
   width: 18px;

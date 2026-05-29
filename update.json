@@ -1,11 +1,11 @@
 {
   "version": "0.1.0",
-  "notes": "See https://github.com/Hydra191/NToys/releases",
+  "notes": "See https://github.com/Hydra191/LunaToys/releases",
   "pub_date": "2025-01-01T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "",
-      "url": "https://github.com/Hydra191/NToys/releases/download/v0.1.0/ntoys_0.1.0_x64-setup.exe"
+      "url": "https://github.com/Hydra191/LunaToys/releases/download/v0.1.0/luna-toys_0.1.0_x64-setup.exe"
     }
   }
 }
