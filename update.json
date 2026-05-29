@@ -4,8 +4,7 @@
   "pub_date": "2025-01-01T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTSUJ5d3hoMFFqWHdGV1JFaGQ2K1ZwZmsrRkFvWlg1V00vZSt0blNINmk2REk2MG9MV2owS0lKSlBvYUpUVXRsaG1xalNBSUFYRnN2Y3hsYWdxaU1kZ1NSUVkzeldBV1FFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMDQ5NDEwCWZpbGU6THVuYSBUb3lzXzAuMC4wX3g2NC1zZXR1cC5leGUKYytrRno5OFJrYjdhTjJrNzAyRTlqWWZoQ3JSYWVtZ2VXcmkyZVFTSXRYSjZFSzd6ZmsvU2NiSS9RNE5oMTVtSGZsMElkUlhvM3RKWWRpS0s5anhuQXc9PQo=",
-      "url": "https://github.com/Hydra191/NToys/releases/download/0.1.0/Luna.Toys_0.0.0_x64-setup.exe"
+      "url": "https://github.com/Hydra191/NToys/releases"
     }
   }
 }

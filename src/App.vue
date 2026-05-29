@@ -11,11 +11,10 @@ import GlobalSettings from "./components/settings/SettingsController.vue";
 import { musicState } from "./scripts/music.js";
 import { useRafIdle } from "./scripts/useRafIdle.js";
 import { startWeather, stopWeather } from "./scripts/weather.js";
-import { checkForUpdate } from "./scripts/updater.js";
 import { settingsState, loadSettings } from "./components/settings/settingsRegistry.js";
+import logoSrc from "./assets/icon/luna.svg";
 const activePlugin = ref("home");
 const showAbout = ref(false);
-const titleIconColor = ref("#A78BFA");
 const tauriVisible = ref(true);
 const { isIdle: rafIdle } = useRafIdle();
 const windowVisible = computed(() => tauriVisible.value && !rafIdle.value);
@@ -62,8 +61,6 @@ onMounted(async () => {
   loadSettings();
   startWeather();
   startTitleAnimation();
-  // Check for updates after UI settles (3s delay)
-  setTimeout(() => checkForUpdate(), 3000);
   const unlistenShown = await listen("main-window-shown", () => {
     tauriVisible.value = true;
   });
@@ -101,10 +98,7 @@ async function close() {
 
         <div class="titlebar-title" @click.stop="showAbout = true">
 
-          <svg viewBox="0 0 16 16" :fill="titleIconColor" class="titlebar-icon" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 0.278a0.77 0.77 0 0 1 0.08 0.858 7.2 7.2 0 0 0-0.878 3.46c0 4.021 3.278 7.277 7.318 7.277q0.792-1e-3 1.533-0.16a0.79 0.79 0 0 1 0.81 0.316 0.73 0.73 0 0 1-0.031 0.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124 0.06A0.75 0.75 0 0 1 6 0.278" />
-            <path transform="rotate(-33 12.052125 5.611427)" d="M10.2951 4.8033a0.217 0.217 0 0 1 0.412 0l0.387 1.162c0.173 0.518 0.579 0.924 1.097 1.097l1.162 0.387a0.217 0.217 0 0 1 0 0.412l-1.162 0.387a1.73 1.73 0 0 0-1.097 1.097l-0.387 1.162a0.217 0.217 0 0 1-0.412 0l-0.387-1.162a1.73 1.73 0 0 0-1.097-1.097l-1.162-0.387a0.217 0.217 0 0 1 0-0.412l1.162-0.387a1.73 1.73 0 0 0 1.097-1.097zM13.3641 1.7543a0.145 0.145 0 0 1 0.274 0l0.258 0.774c0.115 0.346 0.386 0.617 0.732 0.732l0.774 0.258a0.145 0.145 0 0 1 0 0.274l-0.774 0.258a1.16 1.16 0 0 0-0.732 0.732l-0.258 0.774a0.145 0.145 0 0 1-0.274 0l-0.258-0.774a1.16 1.16 0 0 0-0.732-0.732l-0.774-0.258a0.145 0.145 0 0 1 0-0.274l0.774-0.258c0.346-0.115 0.617-0.386 0.732-0.732z" />
-          </svg>
+          <img :src="logoSrc" class="titlebar-icon" />
         </div>
 
         <div class="titlebar-lyrics" v-if="lyricText">
@@ -195,7 +189,7 @@ html, body {
 .titlebar-title {
   background: rgba(138, 138, 138, 0.2);
   border-radius: 50%;
-  padding: 8px;
+  padding: 4px;
   margin: 6px;
   display: flex;
   align-items: center;
@@ -203,8 +197,8 @@ html, body {
   cursor: pointer;
 }
 .titlebar-icon {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 .titlebar-lyrics {

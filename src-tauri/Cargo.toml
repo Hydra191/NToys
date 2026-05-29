@@ -23,7 +23,7 @@ walkdir = "2"
 image = { version = "0.25", default-features = false, features = ["png", "webp"] }
 base64 = "0.22"
 pinyin = "0.10"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "socks"] }
+reqwest = { version = "0.12", default-features = false, features = ["native-tls", "socks"] }
 winreg = "0.53"
 url = "2"
 urlencoding = "2"
