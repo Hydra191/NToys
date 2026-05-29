@@ -47,7 +47,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://raw.githubusercontent.com/Hydra191/LunaToys/main/update.json"
+        "https://raw.githubusercontent.com/Hydra191/NToys/main/update.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVGMjM0NDg3MzEyQzA3ODgKUldTSUJ5d3hoMFFqWDlqVk12c0liU3ZNelcrc0pwTnJEL0RTb0wxUExZTUNnaVNrK2hPT0tTcmEK"
     }
