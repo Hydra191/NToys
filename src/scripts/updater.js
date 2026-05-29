@@ -1,14 +1,17 @@
 /**
- * Auto-update checker for Tauri 2.
- * Only checks — user downloads manually from GitHub Releases.
+ * Check for updates by fetching update.json directly.
+ * No Tauri updater plugin needed — just version comparison.
  */
+
+const ENDPOINT = "https://raw.githubusercontent.com/Hydra191/NToys/main/update.json";
 
 export async function checkForUpdate() {
   try {
-    const { check } = await import("@tauri-apps/plugin-updater");
-    const update = await check();
-    if (!update) return null;
-    return { version: update.version, notes: update.body || "", date: update.date };
+    const res = await fetch(ENDPOINT);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.version) return null;
+    return { version: data.version, notes: data.notes || "", date: data.pub_date || "" };
   } catch (e) {
     console.warn("Update check failed:", e);
     return null;
